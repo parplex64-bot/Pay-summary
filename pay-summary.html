@@ -19,7 +19,7 @@
   .period-label { font-size: 13px; color: var(--text); font-family: 'DM Mono', monospace; background: #111; border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; }
   .totals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
   .total-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
-  .total-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #444, #fff); }
+  .total-card::before { display: none; }
   .total-card.highlight { grid-column: 1 / -1; background: #fff; border-color: #fff; }
   .total-card.highlight .total-label { color: #000; }
   .total-card.highlight .total-value { color: #000; }
@@ -36,7 +36,7 @@
   .role-badge { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; font-family: 'DM Mono', monospace; padding: 3px 8px; border-radius: 4px; }
   .role-badge.cashier { background: #0a2a0a; color: #4ade80; border: 1px solid #166534; }
   .role-badge.bouncer { background: #0a1a2a; color: #60a5fa; border: 1px solid #1d4ed8; }
-  .role-badge.cafe { background: #1a1a0a; color: #facc15; border: 1px solid #854d0e; }
+  .role-badge.cafe { background: #222; color: #fff; border: 1px solid #555; }
   .shift-date { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 3px; }
   .shift-right { text-align: right; }
   .shift-pay { font-size: 15px; font-weight: 500; color: #fff; font-family: 'DM Mono', monospace; }
