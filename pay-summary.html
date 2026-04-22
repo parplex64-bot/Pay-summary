@@ -4,63 +4,67 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pay Summary</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #000000;
-    --surface: #111111;
-    --card: #1a1a1a;
-    --green: #ffffff;
-    --green-dim: #cccccc;
-    --green-dark: #2a2a2a;
-    --text: #ffffff;
-    --muted: #888888;
-    --border: #2a2a2a;
-    --accent: #ffffff;
-  }
+  :root { --bg: #000; --card: #1a1a1a; --text: #fff; --muted: #888; --border: #2a2a2a; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; padding: 24px 16px 48px; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; padding: 24px 16px 48px; }
   header { text-align: center; margin-bottom: 32px; padding-top: 16px; }
-  .logo { font-size: 11px; letter-spacing: 0.3em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; font-family: 'Space Mono', monospace; }
-  h1 { font-size: clamp(28px, 6vw, 48px); font-weight: 800; color: var(--green); line-height: 1; letter-spacing: -0.02em; }
-  .subtitle { font-size: 13px; color: var(--muted); margin-top: 6px; font-family: 'Space Mono', monospace; }
+  .logo { font-size: 11px; letter-spacing: 0.3em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
+  h1 { font-size: clamp(28px, 6vw, 48px); font-weight: 800; color: #fff; line-height: 1; letter-spacing: -0.02em; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-top: 6px; font-family: 'DM Mono', monospace; }
   .period-selector { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
-  .period-btn { background: var(--card); border: 1px solid var(--border); color: var(--muted); padding: 8px 16px; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 12px; cursor: pointer; transition: all 0.2s; }
-  .period-btn:hover, .period-btn.active { background: var(--green-dark); border-color: var(--green-dim); color: var(--green); }
-  .period-label { font-size: 13px; color: var(--text); font-family: 'Space Mono', monospace; background: var(--surface); border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; }
+  .period-btn { background: var(--card); border: 1px solid var(--border); color: var(--muted); padding: 8px 16px; border-radius: 6px; font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+  .period-btn.active, .period-btn:hover { background: #2a2a2a; border-color: #fff; color: #fff; }
+  .period-label { font-size: 13px; color: var(--text); font-family: 'DM Mono', monospace; background: #111; border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; }
   .totals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
   .total-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
-  .total-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--green-dark), var(--green)); }
-  .total-card.highlight { grid-column: 1 / -1; background: linear-gradient(135deg, #0d2010, #111811); border-color: var(--green-dark); }
-  .total-label { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; font-family: 'Space Mono', monospace; margin-bottom: 6px; }
-  .total-value { font-size: 32px; font-weight: 800; color: var(--green); line-height: 1; }
+  .total-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #444, #fff); }
+  .total-card.highlight { grid-column: 1 / -1; background: #fff; border-color: #fff; }
+  .total-card.highlight .total-label { color: #000; }
+  .total-card.highlight .total-value { color: #000; }
+  .total-card.highlight .total-sub { color: #444; }
+  .total-label { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; font-family: 'DM Mono', monospace; margin-bottom: 6px; }
+  .total-value { font-size: 32px; font-weight: 500; color: #fff; line-height: 1; font-family: 'DM Mono', monospace; }
   .total-card.highlight .total-value { font-size: clamp(36px, 8vw, 52px); }
-  .total-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: 'Space Mono', monospace; }
-  .section-title { font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); font-family: 'Space Mono', monospace; margin-bottom: 12px; padding-left: 4px; }
+  .total-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: 'DM Mono', monospace; }
+  .section-title { font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 12px; padding-left: 4px; }
   .shifts-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
   .shift-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; animation: fadeIn 0.3s ease forwards; opacity: 0; }
-  @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } from { opacity: 0; transform: translateY(8px); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .shift-role { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
-  .role-badge { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; font-family: 'Space Mono', monospace; padding: 2px 7px; border-radius: 4px; background: var(--green-dark); color: var(--green); }
-  .role-badge.cafe { background: #1a2a1a; color: #86efac; }
-  .role-badge.bouncer { background: #1e1a0a; color: #fbbf24; }
-  .shift-date { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 3px; }
+  .role-badge { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; font-family: 'DM Mono', monospace; padding: 3px 8px; border-radius: 4px; }
+  .role-badge.cashier { background: #0a2a0a; color: #4ade80; border: 1px solid #166534; }
+  .role-badge.bouncer { background: #0a1a2a; color: #60a5fa; border: 1px solid #1d4ed8; }
+  .role-badge.cafe { background: #1a1a0a; color: #facc15; border: 1px solid #854d0e; }
+  .shift-date { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 3px; }
   .shift-right { text-align: right; }
-  .shift-pay { font-size: 15px; font-weight: 700; color: var(--green); font-family: 'Space Mono', monospace; }
-  .shift-hours { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 2px; }
+  .shift-pay { font-size: 15px; font-weight: 500; color: #fff; font-family: 'DM Mono', monospace; }
+  .shift-hours { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
   .breakdown { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 24px; }
-  .breakdown-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .breakdown-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
   .breakdown-row:last-child { border-bottom: none; }
-  .breakdown-row .label { color: var(--muted); font-family: 'Space Mono', monospace; font-size: 11px; }
-  .breakdown-row .val { color: var(--text); font-family: 'Space Mono', monospace; font-size: 12px; }
-  .refresh-btn { width: 100%; background: var(--green-dark); border: 1px solid var(--green-dim); color: var(--green); padding: 14px; border-radius: 10px; font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
-  .refresh-btn:hover { background: #166534; border-color: var(--green); }
-  .status { text-align: center; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 16px; }
-  .loading { text-align: center; padding: 48px; color: var(--muted); font-family: 'Space Mono', monospace; font-size: 12px; }
+  .breakdown-row .label { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; }
+  .breakdown-row .val { color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; }
+  .tax-highlight { background: #0d1f3a; border: 1px solid #1d4ed8; border-radius: 12px; padding: 20px; margin-bottom: 12px; position: relative; overflow: hidden; }
+  .tax-highlight::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #1d4ed8, #60a5fa); }
+  .tax-highlight .total-label { color: #93c5fd; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; font-family: 'DM Mono', monospace; margin-bottom: 6px; }
+  .tax-highlight .total-value { font-size: clamp(32px, 7vw, 48px); font-weight: 500; color: #fff; font-family: 'DM Mono', monospace; line-height: 1; }
+  .tax-highlight .total-sub { font-size: 11px; color: #93c5fd; margin-top: 4px; font-family: 'DM Mono', monospace; }
+  .tax-breakdown { background: #0a0f1a; border: 1px solid #1a2a3a; border-radius: 12px; padding: 18px; margin-bottom: 12px; }
+  .tax-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1a2a3a; }
+  .tax-row:last-child { border-bottom: none; }
+  .tax-row .label { color: #6b8fbb; font-family: 'DM Mono', monospace; font-size: 11px; }
+  .tax-row .val { color: #93c5fd; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .tax-note { font-size: 10px; color: #555; font-family: 'DM Mono', monospace; margin-bottom: 24px; text-align: center; }
+  .refresh-btn { width: 100%; background: #1a1a1a; border: 1px solid #444; color: #fff; padding: 14px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  .refresh-btn:hover { background: #2a2a2a; border-color: #fff; }
+  .status { text-align: center; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 16px; }
+  .loading { text-align: center; padding: 48px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; }
   .dot-anim::after { content: '...'; animation: dots 1.5s infinite; }
-  @keyframes dots { 0%, 33% { content: '.'; } 34%, 66% { content: '..'; } 67%, 100% { content: '...'; } }
-  .error { background: #1a0a0a; border: 1px solid #7f1d1d; color: #fca5a5; padding: 16px; border-radius: 10px; font-family: 'Space Mono', monospace; font-size: 11px; line-height: 1.6; }
-  .tip-note { font-size: 10px; color: var(--muted); font-family: 'Space Mono', monospace; }
+  @keyframes dots { 0%,33%{content:'.'}34%,66%{content:'..'}67%,100%{content:'...'} }
+  .error { background: #1a0a0a; border: 1px solid #7f1d1d; color: #fca5a5; padding: 16px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.6; }
+  .tip-note { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
 </style>
 </head>
 <body>
@@ -85,19 +89,36 @@ const PROXIES = [
   `https://api.allorigins.win/raw?url=${encodeURIComponent(ICAL_SOURCE)}`,
   `https://cors-anywhere.herokuapp.com/${ICAL_SOURCE}`,
 ];
-const RATES = { cashier: { hourly: 16, tips: 0 }, bouncer: { hourly: 16, tips: 0 }, cafe: { hourly: 15.05, tips: 30 } };
+const RATES = { cashier:{hourly:16,tips:0}, bouncer:{hourly:16,tips:0}, cafe:{hourly:15.05,tips:30} };
 let allShifts = [], periodOffset = 0;
+
+function calcTax(gross) {
+  const ss = gross * 0.062;
+  const medicare = gross * 0.0145;
+  const annual = gross * 26;
+  let annualFed = 0;
+  if (annual <= 11925) annualFed = annual * 0.10;
+  else if (annual <= 48475) annualFed = 1192.50 + (annual - 11925) * 0.12;
+  else annualFed = 5580.50 + (annual - 48475) * 0.22;
+  const federal = annualFed / 26;
+  let annualOr = 0;
+  if (annual <= 10000) annualOr = annual * 0.0475;
+  else annualOr = 475 + (annual - 10000) * 0.0675;
+  const oregon = annualOr / 26;
+  const total = ss + medicare + federal + oregon;
+  return { ss, medicare, federal, oregon, total, net: gross - total };
+}
+
 function getPayPeriod(offset = 0) {
   const anchor = new Date(2026, 3, 20);
-  const today = new Date();
   const msPerPeriod = 14 * 86400000;
-  const periodIndex = Math.floor((today - anchor) / msPerPeriod) + offset;
+  const periodIndex = Math.floor((new Date() - anchor) / msPerPeriod) + offset;
   const start = new Date(anchor.getTime() + periodIndex * msPerPeriod);
   const end = new Date(start.getTime() + 13 * 86400000);
   end.setHours(23, 59, 59);
   return { start, end };
 }
-function formatDate(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+function formatDate(d) { return d.toLocaleDateString('en-US', {month:'short',day:'numeric'}); }
 function parseICS(text) {
   const events = [];
   const blocks = text.split('BEGIN:VEVENT');
@@ -106,45 +127,72 @@ function parseICS(text) {
     const get = (key) => { const m = block.match(new RegExp(key + '[^:]*:([^\\r\\n]+)')); return m ? m[1].trim() : ''; };
     const title = get('SUMMARY'), dtstart = get('DTSTART'), dtend = get('DTEND');
     if (!title || !dtstart) continue;
-    const parseICSDate = (s) => {
+    const pd = (s) => {
       if (!s) return null;
-      const clean = s.replace(/[TZ]/g, '');
-      if (clean.length >= 12) return new Date(parseInt(clean.slice(0,4)), parseInt(clean.slice(4,6))-1, parseInt(clean.slice(6,8)), parseInt(clean.slice(8,10)), parseInt(clean.slice(10,12)));
+      const c = s.replace(/[TZ]/g,'');
+      if (c.length >= 12) return new Date(+c.slice(0,4), +c.slice(4,6)-1, +c.slice(6,8), +c.slice(8,10), +c.slice(10,12));
       return new Date(s);
     };
-    const start = parseICSDate(dtstart), end = parseICSDate(dtend);
+    const start = pd(dtstart), end = pd(dtend);
     if (!start) continue;
-    let role = 'unknown';
     const t = title.toLowerCase();
-    if (t.includes('cashier')) role = 'cashier';
-    else if (t.includes('bouncer')) role = 'bouncer';
-    else if (t.includes('cafe') || t.includes('pickle')) role = 'cafe';
+    let role = t.includes('cashier')?'cashier':t.includes('bouncer')?'bouncer':(t.includes('cafe')||t.includes('pickle'))?'cafe':'unknown';
     if (role === 'unknown') continue;
     const hours = end ? (end - start) / 3600000 : 0;
     const rate = RATES[role];
-    events.push({ title, start, end, role, hours, pay: hours * rate.hourly + rate.tips, tips: rate.tips, hourly: rate.hourly });
+    events.push({ title, start, end, role, hours, pay: hours * rate.hourly + rate.tips, tips: rate.tips });
   }
   return events;
 }
-function getRoleBadge(role) {
-  if (role === 'cafe') return '<span class="role-badge cafe">Cafe</span>';
-  if (role === 'bouncer') return '<span class="role-badge bouncer">Bouncer</span>';
-  return '<span class="role-badge">Cashier</span>';
+function badge(role) {
+  return '<span class="role-badge ' + role + '">' + role.charAt(0).toUpperCase() + role.slice(1) + '</span>';
 }
 function render() {
-  const { start, end } = getPayPeriod(periodOffset);
+  const {start, end} = getPayPeriod(periodOffset);
   document.getElementById('periodLabel').textContent = formatDate(start) + ' – ' + formatDate(end);
-  const shifts = allShifts.filter(s => s.start >= start && s.start <= end).sort((a, b) => a.start - b.start);
-  if (shifts.length === 0) { document.getElementById('content').innerHTML = '<div class="loading">No shifts found for this period.</div>'; return; }
-  let totalHours = 0, totalPay = 0, cashierHours = 0, bouncerHours = 0, cafeHours = 0, cashierPay = 0, bouncerPay = 0, cafePay = 0, totalTips = 0;
+  const shifts = allShifts.filter(s => s.start >= start && s.start <= end).sort((a,b) => a.start - b.start);
+  if (!shifts.length) { document.getElementById('content').innerHTML = '<div class="loading">No shifts found.</div>'; return; }
+  let th=0, tp=0, ch=0, bh=0, fh=0, cp=0, bp=0, fp=0, tips=0;
   shifts.forEach(s => {
-    totalHours += s.hours; totalPay += s.pay;
-    if (s.role === 'cashier') { cashierHours += s.hours; cashierPay += s.pay; }
-    if (s.role === 'bouncer') { bouncerHours += s.hours; bouncerPay += s.pay; }
-    if (s.role === 'cafe') { cafeHours += s.hours; cafePay += s.pay; totalTips += s.tips; }
+    th+=s.hours; tp+=s.pay;
+    if(s.role==='cashier'){ch+=s.hours;cp+=s.pay;}
+    if(s.role==='bouncer'){bh+=s.hours;bp+=s.pay;}
+    if(s.role==='cafe'){fh+=s.hours;fp+=s.pay;tips+=s.tips;}
   });
-  const shiftCards = shifts.map((s, i) => '<div class="shift-card" style="animation-delay:' + (i*0.05) + 's"><div><div class="shift-role">' + getRoleBadge(s.role) + ' ' + s.role.charAt(0).toUpperCase() + s.role.slice(1) + '</div><div class="shift-date">' + s.start.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' · ' + s.start.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + ' – ' + (s.end ? s.end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '?') + '</div></div><div class="shift-right"><div class="shift-pay">$' + s.pay.toFixed(2) + '</div><div class="shift-hours">' + s.hours.toFixed(2) + ' hrs' + (s.tips ? ' + $'+s.tips+' tips' : '') + '</div></div></div>').join('');
-  document.getElementById('content').innerHTML = '<div class="totals-grid"><div class="total-card highlight"><div class="total-label">Total Income</div><div class="total-value">$' + totalPay.toFixed(2) + '</div><div class="total-sub">' + totalHours.toFixed(2) + ' total hours · ' + shifts.length + ' shifts</div></div><div class="total-card"><div class="total-label">Hours</div><div class="total-value">' + totalHours.toFixed(2) + '</div><div class="total-sub">this period</div></div><div class="total-card"><div class="total-label">Est. Tips</div><div class="total-value">$' + totalTips.toFixed(0) + '</div><div class="total-sub">cafe shifts</div></div></div><div class="section-title">Shifts</div><div class="shifts-list">' + shiftCards + '</div><div class="section-title">Breakdown by Role</div><div class="breakdown">' + (cashierHours > 0 ? '<div class="breakdown-row"><span class="label">Cashier</span><span class="val">' + cashierHours.toFixed(2) + ' hrs · $' + cashierPay.toFixed(2) + '</span></div>' : '') + (bouncerHours > 0 ? '<div class="breakdown-row"><span class="label">Bouncer</span><span class="val">' + bouncerHours.toFixed(2) + ' hrs · $' + bouncerPay.toFixed(2) + '</span></div>' : '') + (cafeHours > 0 ? '<div class="breakdown-row"><span class="label">Cafe</span><span class="val">' + cafeHours.toFixed(2) + ' hrs · $' + cafePay.toFixed(2) + ' <span class="tip-note">(incl. tips)</span></span></div>' : '') + '<div class="breakdown-row"><span class="label">Total</span><span class="val">' + totalHours.toFixed(2) + ' hrs · $' + totalPay.toFixed(2) + '</span></div></div>';
+  const tax = calcTax(tp);
+  const cards = shifts.map((s,i) =>
+    '<div class="shift-card" style="animation-delay:'+(i*0.05)+'s">'+
+    '<div><div class="shift-role">'+badge(s.role)+' '+s.role.charAt(0).toUpperCase()+s.role.slice(1)+'</div>'+
+    '<div class="shift-date">'+s.start.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+
+    ' · '+s.start.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+
+    ' – '+(s.end?s.end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'?')+'</div></div>'+
+    '<div class="shift-right"><div class="shift-pay">$'+s.pay.toFixed(2)+'</div>'+
+    '<div class="shift-hours">'+s.hours.toFixed(2)+' hrs'+(s.tips?' + $'+s.tips+' tips':'')+'</div></div></div>'
+  ).join('');
+  document.getElementById('content').innerHTML =
+    '<div class="totals-grid">'+
+    '<div class="total-card highlight"><div class="total-label">Gross Income</div><div class="total-value">$'+tp.toFixed(2)+'</div><div class="total-sub">'+th.toFixed(2)+' hrs · '+shifts.length+' shifts</div></div>'+
+    '<div class="total-card"><div class="total-label">Hours</div><div class="total-value">'+th.toFixed(2)+'</div><div class="total-sub">this period</div></div>'+
+    '<div class="total-card"><div class="total-label">Est. Tips</div><div class="total-value">$'+tips+'</div><div class="total-sub">cafe shifts</div></div>'+
+    '</div>'+
+    '<div class="section-title">Shifts</div><div class="shifts-list">'+cards+'</div>'+
+    '<div class="section-title">By Role</div>'+
+    '<div class="breakdown">'+
+    (ch>0?'<div class="breakdown-row"><span class="label">Cashier</span><span class="val">'+ch.toFixed(2)+' hrs · $'+cp.toFixed(2)+'</span></div>':'')+
+    (bh>0?'<div class="breakdown-row"><span class="label">Bouncer</span><span class="val">'+bh.toFixed(2)+' hrs · $'+bp.toFixed(2)+'</span></div>':'')+
+    (fh>0?'<div class="breakdown-row"><span class="label">Cafe</span><span class="val">'+fh.toFixed(2)+' hrs · $'+fp.toFixed(2)+' <span class="tip-note">(incl. tips)</span></span></div>':'')+
+    '<div class="breakdown-row"><span class="label">Total</span><span class="val">'+th.toFixed(2)+' hrs · $'+tp.toFixed(2)+'</span></div>'+
+    '</div>'+
+    '<div class="section-title">After Taxes · Oregon · Single</div>'+
+    '<div class="tax-highlight"><div class="total-label">Estimated Take-Home</div><div class="total-value">$'+tax.net.toFixed(2)+'</div><div class="total-sub">after all deductions this period</div></div>'+
+    '<div class="tax-breakdown">'+
+    '<div class="tax-row"><span class="label">Social Security (6.2%)</span><span class="val">-$'+tax.ss.toFixed(2)+'</span></div>'+
+    '<div class="tax-row"><span class="label">Medicare (1.45%)</span><span class="val">-$'+tax.medicare.toFixed(2)+'</span></div>'+
+    '<div class="tax-row"><span class="label">Federal Income Tax</span><span class="val">-$'+tax.federal.toFixed(2)+'</span></div>'+
+    '<div class="tax-row"><span class="label">Oregon State Tax</span><span class="val">-$'+tax.oregon.toFixed(2)+'</span></div>'+
+    '<div class="tax-row"><span class="label" style="color:#fff">Total Withheld</span><span class="val" style="color:#f87171">-$'+tax.total.toFixed(2)+'</span></div>'+
+    '</div>'+
+    '<div class="tax-note">* Estimates based on 2026 rates, single filer. Actual withholding may vary.</div>';
 }
 async function loadShifts() {
   document.getElementById('content').innerHTML = '<div class="loading"><span class="dot-anim">Syncing shifts</span></div>';
@@ -152,7 +200,7 @@ async function loadShifts() {
   let lastError = null;
   for (const url of PROXIES) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const res = await fetch(url, {signal: AbortSignal.timeout(8000)});
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const text = await res.text();
       if (!text.includes('BEGIN:VCALENDAR')) throw new Error('Invalid iCal data');
@@ -160,13 +208,13 @@ async function loadShifts() {
       render();
       document.getElementById('status').textContent = 'Last synced: ' + new Date().toLocaleTimeString();
       return;
-    } catch (err) { lastError = err; }
+    } catch(err) { lastError = err; }
   }
-  document.getElementById('content').innerHTML = '<div class="error">⚠ Could not load shifts.<br><br>Make sure you are connected and try refreshing.<br><br>Error: ' + lastError?.message + '</div>';
+  document.getElementById('content').innerHTML = '<div class="error">⚠ Could not load shifts.<br><br>Check your connection and try refreshing.<br><br>Error: '+lastError?.message+'</div>';
 }
 function selectPeriod(offset) {
   periodOffset = offset;
-  document.querySelectorAll('.period-btn').forEach((b, i) => b.classList.toggle('active', [0,-1,1][i] === offset));
+  document.querySelectorAll('.period-btn').forEach((b,i) => b.classList.toggle('active',[0,-1,1][i]===offset));
   if (allShifts.length > 0) render();
 }
 loadShifts();
