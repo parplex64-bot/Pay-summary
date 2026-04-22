@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pay Summary</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f0a;
+    --surface: #111811;
+    --card: #161e16;
+    --green: #4ade80;
+    --green-dim: #22c55e;
+    --green-dark: #14532d;
+    --text: #e8f5e8;
+    --muted: #6b8f6b;
+    --border: #1e2e1e;
+    --accent: #86efac;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+    padding-top: 16px;
+  }
+
+  .logo {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  h1 {
+    font-size: clamp(28px, 6vw, 48px);
+    font-weight: 800;
+    color: var(--green);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .period-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .period-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .period-btn:hover, .period-btn.active {
+    background: var(--green-dark);
+    border-color: var(--green-dim);
+    color: var(--green);
+  }
+
+  .period-label {
+    font-size: 13px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 6px;
+  }
+
+  .totals-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .total-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .total-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--green-dark), var(--green));
+  }
+
+  .total-card.highlight {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, #0d2010, #111811);
+    border-color: var(--green-dark);
+  }
+
+  .total-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 6px;
+  }
+
+  .total-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--green);
+    line-height: 1;
+  }
+
+  .total-card.highlight .total-value {
+    font-size: clamp(36px, 8vw, 52px);
+  }
+
+  .total-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .section-title {
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 12px;
+    padding-left: 4px;
+  }
+
+  .shifts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+
+  .shift-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.3s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(8px); }
+  }
+
+  .shift-role {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .role-badge {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--green-dark);
+    color: var(--green);
+  }
+
+  .role-badge.cafe { background: #1a2a1a; color: #86efac; }
+  .role-badge.bouncer { background: #1e1a0a; color: #fbbf24; }
+
+  .shift-date {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    margin-top: 3px;
+  }
+
+  .shift-right {
+    text-align: right;
+  }
+
+  .shift-pay {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--green);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .shift-hours {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .breakdown {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 24px;
+  }
+
+  .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .breakdown-row:last-child { border-bottom: none; }
+  .breakdown-row .label { color: var(--muted); font-family: 'Space Mono', monospace; font-size: 11px; }
+  .breakdown-row .val { color: var(--text); font-family: 'Space Mono', monospace; font-size: 12px; }
+
+  .refresh-btn {
+    width: 100%;
+    background: var(--green-dark);
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    padding: 14px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .refresh-btn:hover {
+    background: #166534;
+    border-color: var(--green);
+  }
+
+  .status {
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 16px;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 48px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+  }
+
+  .dot-anim::after {
+    content: '...';
+    animation: dots 1.5s infinite;
+  }
+
+  @keyframes dots {
+    0%, 33% { content: '.'; }
+    34%, 66% { content: '..'; }
+    67%, 100% { content: '...'; }
+  }
+
+  .error {
+    background: #1a0a0a;
+    border: 1px solid #7f1d1d;
+    color: #fca5a5;
+    padding: 16px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  .tip-note {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Cascade Indoor Sports</div>
+  <h1>Pay Summary</h1>
+  <div class="subtitle">Auto-synced from When I Work</div>
+</header>
+
+<div class="period-selector">
+  <button class="period-btn active" onclick="selectPeriod(0)">Current</button>
+  <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
+  <button class="period-btn" onclick="selectPeriod(1)">Next</button>
+  <div class="period-label" id="periodLabel">—</div>
+</div>
+
+<div id="content"><div class="loading"><span class="dot-anim">Loading shifts</span></div></div>
+
+<button class="refresh-btn" onclick="loadShifts()">↻ Refresh Shifts</button>
+<div class="status" id="status"></div>
+
+<script>
+const ICAL_URL = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://app.wheniwork.com/calendar/ca5d37783d1d108d2afd3ace9efaaa8324e408bb.ics');
+
+const RATES = {
+  cashier: { hourly: 16, tips: 0 },
+  bouncer: { hourly: 16, tips: 0 },
+  cafe: { hourly: 15.05, tips: 30 }
+};
+
+let allShifts = [];
+let periodOffset = 0;
+
+function getPayPeriod(offset = 0) {
+  // Pay period starts every other Monday, anchored to Apr 20 2026
+  const anchor = new Date(2026, 3, 20); // Apr 20 2026
+  const today = new Date();
+  const msPerDay = 86400000;
+  const msPerPeriod = 14 * msPerDay;
+  const diff = today - anchor;
+  const periodIndex = Math.floor(diff / msPerPeriod) + offset;
+  const start = new Date(anchor.getTime() + periodIndex * msPerPeriod);
+  const end = new Date(start.getTime() + 13 * msPerDay);
+  end.setHours(23, 59, 59);
+  return { start, end };
+}
+
+function formatDate(d) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function parseICS(text) {
+  const events = [];
+  const blocks = text.split('BEGIN:VEVENT');
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    const get = (key) => {
+      const m = block.match(new RegExp(key + '[^:]*:([^\\r\\n]+)'));
+      return m ? m[1].trim() : '';
+    };
+    const title = get('SUMMARY');
+    const dtstart = get('DTSTART');
+    const dtend = get('DTEND');
+    if (!title || !dtstart) continue;
+
+    const parseICSDate = (s) => {
+      if (!s) return null;
+      // Handle timezone format: 20260420T160000 or 20260420T160000Z
+      const clean = s.replace(/[TZ]/g, '');
+      if (clean.length >= 12) {
+        return new Date(
+          parseInt(clean.slice(0,4)),
+          parseInt(clean.slice(4,6)) - 1,
+          parseInt(clean.slice(6,8)),
+          parseInt(clean.slice(8,10)),
+          parseInt(clean.slice(10,12))
+        );
+      }
+      return new Date(s);
+    };
+
+    const start = parseICSDate(dtstart);
+    const end = parseICSDate(dtend);
+    if (!start) continue;
+
+    let role = 'unknown';
+    const t = title.toLowerCase();
+    if (t.includes('cashier')) role = 'cashier';
+    else if (t.includes('bouncer')) role = 'bouncer';
+    else if (t.includes('cafe') || t.includes('pickle')) role = 'cafe';
+
+    if (role === 'unknown') continue;
+
+    const hours = end ? (end - start) / 3600000 : 0;
+    const rate = RATES[role];
+    const pay = hours * rate.hourly + rate.tips;
+
+    events.push({ title, start, end, role, hours, pay, tips: rate.tips, hourly: rate.hourly });
+  }
+  return events;
+}
+
+function getRoleBadge(role) {
+  if (role === 'cafe') return `<span class="role-badge cafe">Cafe</span>`;
+  if (role === 'bouncer') return `<span class="role-badge bouncer">Bouncer</span>`;
+  return `<span class="role-badge">Cashier</span>`;
+}
+
+function render() {
+  const { start, end } = getPayPeriod(periodOffset);
+  document.getElementById('periodLabel').textContent = `${formatDate(start)} – ${formatDate(end)}`;
+
+  const shifts = allShifts.filter(s => s.start >= start && s.start <= end)
+    .sort((a, b) => a.start - b.start);
+
+  if (shifts.length === 0) {
+    document.getElementById('content').innerHTML = `<div class="loading">No shifts found for this period.</div>`;
+    return;
+  }
+
+  let totalHours = 0, totalPay = 0;
+  let cashierHours = 0, bouncerHours = 0, cafeHours = 0;
+  let cashierPay = 0, bouncerPay = 0, cafePay = 0, totalTips = 0;
+
+  shifts.forEach(s => {
+    totalHours += s.hours;
+    totalPay += s.pay;
+    if (s.role === 'cashier') { cashierHours += s.hours; cashierPay += s.pay; }
+    if (s.role === 'bouncer') { bouncerHours += s.hours; bouncerPay += s.pay; }
+    if (s.role === 'cafe') { cafeHours += s.hours; cafePay += s.pay; totalTips += s.tips; }
+  });
+
+  const shiftCards = shifts.map((s, i) => `
+    <div class="shift-card" style="animation-delay:${i * 0.05}s">
+      <div>
+        <div class="shift-role">${getRoleBadge(s.role)} ${s.role.charAt(0).toUpperCase() + s.role.slice(1)}</div>
+        <div class="shift-date">${s.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} &nbsp;·&nbsp; ${s.start.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'})} – ${s.end ? s.end.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'}) : '?'}</div>
+      </div>
+      <div class="shift-right">
+        <div class="shift-pay">$${s.pay.toFixed(2)}</div>
+        <div class="shift-hours">${s.hours.toFixed(2)} hrs${s.tips ? ' + $'+s.tips+' tips' : ''}</div>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="totals-grid">
+      <div class="total-card highlight">
+        <div class="total-label">Total Income</div>
+        <div class="total-value">$${totalPay.toFixed(2)}</div>
+        <div class="total-sub">${totalHours.toFixed(2)} total hours · ${shifts.length} shifts</div>
+      </div>
+      <div class="total-card">
+        <div class="total-label">Hours</div>
+        <div class="total-value">${totalHours.toFixed(2)}</div>
+        <div class="total-sub">this period</div>
+      </div>
+      <div class="total-card">
+        <div class="total-label">Est. Tips</div>
+        <div class="total-value">$${totalTips.toFixed(0)}</div>
+        <div class="total-sub">cafe shifts</div>
+      </div>
+    </div>
+
+    <div class="section-title">Shifts</div>
+    <div class="shifts-list">${shiftCards}</div>
+
+    <div class="section-title">Breakdown by Role</div>
+    <div class="breakdown">
+      ${cashierHours > 0 ? `<div class="breakdown-row"><span class="label">Cashier</span><span class="val">${cashierHours.toFixed(2)} hrs · $${cashierPay.toFixed(2)}</span></div>` : ''}
+      ${bouncerHours > 0 ? `<div class="breakdown-row"><span class="label">Bouncer</span><span class="val">${bouncerHours.toFixed(2)} hrs · $${bouncerPay.toFixed(2)}</span></div>` : ''}
+      ${cafeHours > 0 ? `<div class="breakdown-row"><span class="label">Cafe</span><span class="val">${cafeHours.toFixed(2)} hrs · $${cafePay.toFixed(2)} <span class="tip-note">(incl. tips)</span></span></div>` : ''}
+      <div class="breakdown-row"><span class="label">Total</span><span class="val">${totalHours.toFixed(2)} hrs · $${totalPay.toFixed(2)}</span></div>
+    </div>
+  `;
+}
+
+async function loadShifts() {
+  document.getElementById('content').innerHTML = `<div class="loading"><span class="dot-anim">Syncing shifts</span></div>`;
+  document.getElementById('status').textContent = '';
+
+  try {
+    const res = await fetch(ICAL_URL);
+    if (!res.ok) throw new Error('Failed to fetch calendar');
+    const text = await res.text();
+    allShifts = parseICS(text);
+    render();
+    document.getElementById('status').textContent = `Last synced: ${new Date().toLocaleTimeString()}`;
+  } catch (err) {
+    document.getElementById('content').innerHTML = `
+      <div class="error">
+        ⚠ Could not load shifts.<br><br>
+        This may be a network or CORS issue. Make sure you're connected and try refreshing.<br><br>
+        Error: ${err.message}
+      </div>`;
+  }
+}
+
+function selectPeriod(offset) {
+  periodOffset = offset;
+  document.querySelectorAll('.period-btn').forEach((b, i) => {
+    b.classList.toggle('active', [0, -1, 1][i] === offset);
+  });
+  if (allShifts.length > 0) render();
+}
+
+loadShifts();
+</script>
+</body>
+</html>
