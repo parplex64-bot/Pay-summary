@@ -3,23 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Copy Code</title>
-<style>
-  body { background: #000; color: #fff; font-family: monospace; padding: 20px; }
-  button { width: 100%; padding: 16px; font-size: 16px; background: #222; border: 1px solid #fff; color: #fff; border-radius: 10px; cursor: pointer; margin-bottom: 16px; font-family: monospace; }
-  button.copied { background: #333; color: #aaa; }
-  pre { background: #111; padding: 16px; border-radius: 10px; overflow: auto; font-size: 11px; color: #555; border: 1px solid #222; }
-</style>
-</head>
-<body>
-<button id="btn" onclick="copyCode()">📋 Tap to Copy Code</button>
-<pre id="code"></pre>
-<script>
-const code = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pay Summary</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -127,9 +110,9 @@ const code = `<!DOCTYPE html>
 <script>
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/ca5d37783d1d108d2afd3ace9efaaa8324e408bb.ics';
 const PROXIES = [
-  \`https://corsproxy.io/?\${encodeURIComponent(ICAL_SOURCE)}\`,
-  \`https://api.allorigins.win/raw?url=\${encodeURIComponent(ICAL_SOURCE)}\`,
-  \`https://cors-anywhere.herokuapp.com/\${ICAL_SOURCE}\`,
+  `https://corsproxy.io/?${encodeURIComponent(ICAL_SOURCE)}`,
+  `https://api.allorigins.win/raw?url=${encodeURIComponent(ICAL_SOURCE)}`,
+  `https://cors-anywhere.herokuapp.com/${ICAL_SOURCE}`,
 ];
 const RATES = { cashier:{hourly:16,tips:0}, bouncer:{hourly:16,tips:0}, cafe:{hourly:15.05,tips:30} };
 let allShifts = [], periodOffset = 0;
@@ -169,7 +152,7 @@ function parseICS(text) {
   const blocks = text.split('BEGIN:VEVENT');
   for (let i = 1; i < blocks.length; i++) {
     const block = blocks[i];
-    const get = (key) => { const m = block.match(new RegExp(key + '[^:]*:([^\\\\r\\\\n]+)')); return m ? m[1].trim() : ''; };
+    const get = (key) => { const m = block.match(new RegExp(key + '[^:]*:([^\\r\\n]+)')); return m ? m[1].trim() : ''; };
     const title = get('SUMMARY'), dtstart = get('DTSTART'), dtend = get('DTEND');
     if (!title || !dtstart) continue;
     const pd = (s) => {
@@ -248,7 +231,7 @@ function renderLog() {
     const id = 'month' + monthIdx++;
     const isFirst = monthIdx === 1;
     html += '<div class="month-folder">' +
-      '<div class="month-header" onclick="toggleMonth(\'' + id + '\')">' +
+      '<div class="month-header" onclick="toggleMonth('' + id + '')">' +
       '<div><div class="month-name">' + monthName + '</div>' +
       '<div class="month-meta">$' + data.total.toFixed(2) + ' · ' + data.hours.toFixed(2) + ' hrs · ' + data.periods.length + ' period' + (data.periods.length > 1 ? 's' : '') + '</div></div>' +
       '<span class="month-arrow' + (isFirst ? ' open' : '') + '" id="arrow-' + id + '">▶</span>' +
@@ -346,20 +329,6 @@ function selectPeriod(offset) {
   if (allShifts.length > 0) render();
 }
 loadShifts();
-<\/script>
-</body>
-</html>`;
-
-document.getElementById('code').textContent = code;
-
-function copyCode() {
-  navigator.clipboard.writeText(code).then(() => {
-    const btn = document.getElementById('btn');
-    btn.textContent = '✅ Copied!';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '📋 Tap to Copy Code'; btn.classList.remove('copied'); }, 3000);
-  });
-}
 </script>
 </body>
-</html
+</html>
