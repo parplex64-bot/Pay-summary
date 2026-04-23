@@ -13,10 +13,14 @@
   .logo { font-size: 11px; letter-spacing: 0.3em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
   h1 { font-size: clamp(28px, 6vw, 48px); font-weight: 800; color: #fff; line-height: 1; letter-spacing: -0.02em; }
   .subtitle { font-size: 13px; color: var(--muted); margin-top: 6px; font-family: 'DM Mono', monospace; }
-  .period-selector { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .period-selector { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
   .period-btn { background: var(--card); border: 1px solid var(--border); color: var(--muted); padding: 8px 16px; border-radius: 6px; font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; transition: all 0.2s; }
   .period-btn.active, .period-btn:hover { background: #2a2a2a; border-color: #fff; color: #fff; }
-  .period-label { font-size: 13px; color: var(--text); font-family: 'DM Mono', monospace; background: #111; border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; }
+  .period-label { font-size: 13px; color: var(--text); font-family: 'DM Mono', monospace; background: #111; border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; text-align: center; margin-bottom: 20px; }
+  .change-badge { display: inline-block; font-size: 11px; font-family: 'DM Mono', monospace; padding: 3px 8px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
+  .change-badge.up { background: #0a2a0a; color: #4ade80; border: 1px solid #166534; }
+  .change-badge.down { background: #2a0a0a; color: #f87171; border: 1px solid #7f1d1d; }
+  .change-badge.flat { background: #1a1a1a; color: #888; border: 1px solid #333; }
   .totals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
   .total-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
   .total-card::before { display: none; }
@@ -57,6 +61,15 @@
   .tax-row .label { color: #6b8fbb; font-family: 'DM Mono', monospace; font-size: 11px; }
   .tax-row .val { color: #93c5fd; font-family: 'DM Mono', monospace; font-size: 12px; }
   .tax-note { font-size: 10px; color: #555; font-family: 'DM Mono', monospace; margin-bottom: 24px; text-align: center; }
+  .log-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .log-period { font-size: 12px; color: var(--text); font-family: 'DM Mono', monospace; }
+  .log-sub { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .log-right { text-align: right; }
+  .log-pay { font-size: 14px; font-weight: 500; color: #fff; font-family: 'DM Mono', monospace; }
+  .log-change { font-size: 10px; font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .log-change.up { color: #4ade80; }
+  .log-change.down { color: #f87171; }
+  .log-change.flat { color: #888; }
   .refresh-btn { width: 100%; background: #1a1a1a; border: 1px solid #444; color: #fff; padding: 14px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
   .refresh-btn:hover { background: #2a2a2a; border-color: #fff; }
   .status { text-align: center; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 16px; }
@@ -65,6 +78,7 @@
   @keyframes dots { 0%,33%{content:'.'}34%,66%{content:'..'}67%,100%{content:'...'} }
   .error { background: #1a0a0a; border: 1px solid #7f1d1d; color: #fca5a5; padding: 16px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.6; }
   .tip-note { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .empty-log { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; text-align: center; padding: 20px; }
 </style>
 </head>
 <body>
@@ -74,12 +88,13 @@
   <div class="subtitle">Auto-synced from When I Work</div>
 </header>
 <div class="period-selector">
-  <button class="period-btn active" onclick="selectPeriod(0)">Current</button>
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
+  <button class="period-btn active" onclick="selectPeriod(0)">Current</button>
   <button class="period-btn" onclick="selectPeriod(1)">Next</button>
-  <div class="period-label" id="periodLabel">—</div>
 </div>
+<div class="period-label" id="periodLabel">—</div>
 <div id="content"><div class="loading"><span class="dot-anim">Loading shifts</span></div></div>
+<div id="log-section"></div>
 <button class="refresh-btn" onclick="loadShifts()">↻ Refresh Shifts</button>
 <div class="status" id="status"></div>
 <script>
@@ -101,9 +116,7 @@ function calcTax(gross) {
   else if (annual <= 48475) annualFed = 1192.50 + (annual - 11925) * 0.12;
   else annualFed = 5580.50 + (annual - 48475) * 0.22;
   const federal = annualFed / 26;
-  let annualOr = 0;
-  if (annual <= 10000) annualOr = annual * 0.0475;
-  else annualOr = 475 + (annual - 10000) * 0.0675;
+  let annualOr = annual <= 10000 ? annual * 0.0475 : 475 + (annual - 10000) * 0.0675;
   const oregon = annualOr / 26;
   const total = ss + medicare + federal + oregon;
   return { ss, medicare, federal, oregon, total, net: gross - total };
@@ -118,7 +131,15 @@ function getPayPeriod(offset = 0) {
   end.setHours(23, 59, 59);
   return { start, end };
 }
+
+function getPeriodTotal(offset) {
+  const {start, end} = getPayPeriod(offset);
+  const shifts = allShifts.filter(s => s.start >= start && s.start <= end);
+  return shifts.reduce((sum, s) => sum + s.pay, 0);
+}
+
 function formatDate(d) { return d.toLocaleDateString('en-US', {month:'short',day:'numeric'}); }
+
 function parseICS(text) {
   const events = [];
   const blocks = text.split('BEGIN:VEVENT');
@@ -144,14 +165,52 @@ function parseICS(text) {
   }
   return events;
 }
+
 function badge(role) {
   return '<span class="role-badge ' + role + '">' + role.charAt(0).toUpperCase() + role.slice(1) + '</span>';
 }
+
+function changeBadge(current, previous, inline) {
+  if (previous === 0) return '';
+  const pct = ((current - previous) / previous * 100).toFixed(1);
+  const cls = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+  const arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '—';
+  if (inline) return '<span class="log-change ' + cls + '">' + arrow + ' ' + Math.abs(pct) + '% vs prev</span>';
+  return '<span class="change-badge ' + cls + '">' + arrow + ' ' + Math.abs(pct) + '%</span>';
+}
+
+function renderLog() {
+  const anchor = new Date(2026, 3, 20);
+  const msPerPeriod = 14 * 86400000;
+  const currentIndex = Math.floor((new Date() - anchor) / msPerPeriod);
+  let html = '<div class="section-title" style="margin-top:8px;">Pay Period Log</div>';
+  let hasData = false;
+  for (let i = currentIndex; i >= 0; i--) {
+    const offset = i - currentIndex;
+    const {start, end} = getPayPeriod(offset);
+    const shifts = allShifts.filter(s => s.start >= start && s.start <= end);
+    if (!shifts.length) continue;
+    hasData = true;
+    const total = shifts.reduce((sum,s) => sum+s.pay, 0);
+    const hours = shifts.reduce((sum,s) => sum+s.hours, 0);
+    const prevTotal = i > 0 ? getPeriodTotal(offset - 1) : 0;
+    const label = offset === 0 ? 'Current' : offset === -1 ? 'Previous' : formatDate(start) + ' – ' + formatDate(end);
+    const change = prevTotal > 0 ? changeBadge(total, prevTotal, true) : '';
+    html += '<div class="log-card">' +
+      '<div><div class="log-period">' + (offset >= -1 ? label : formatDate(start) + ' – ' + formatDate(end)) + '</div>' +
+      '<div class="log-sub">' + hours.toFixed(2) + ' hrs · ' + shifts.length + ' shifts</div></div>' +
+      '<div class="log-right"><div class="log-pay">$' + total.toFixed(2) + '</div>' + change + '</div>' +
+      '</div>';
+  }
+  if (!hasData) html += '<div class="empty-log">No historical data yet.</div>';
+  document.getElementById('log-section').innerHTML = html;
+}
+
 function render() {
   const {start, end} = getPayPeriod(periodOffset);
   document.getElementById('periodLabel').textContent = formatDate(start) + ' – ' + formatDate(end);
   const shifts = allShifts.filter(s => s.start >= start && s.start <= end).sort((a,b) => a.start - b.start);
-  if (!shifts.length) { document.getElementById('content').innerHTML = '<div class="loading">No shifts found.</div>'; return; }
+  if (!shifts.length) { document.getElementById('content').innerHTML = '<div class="loading">No shifts found.</div>'; renderLog(); return; }
   let th=0, tp=0, ch=0, bh=0, fh=0, cp=0, bp=0, fp=0, tips=0;
   shifts.forEach(s => {
     th+=s.hours; tp+=s.pay;
@@ -160,6 +219,8 @@ function render() {
     if(s.role==='cafe'){fh+=s.hours;fp+=s.pay;tips+=s.tips;}
   });
   const tax = calcTax(tp);
+  const prevTotal = getPeriodTotal(periodOffset - 1);
+  const change = prevTotal > 0 ? changeBadge(tp, prevTotal, false) : '';
   const cards = shifts.map((s,i) =>
     '<div class="shift-card" style="animation-delay:'+(i*0.05)+'s">'+
     '<div><div class="shift-role">'+badge(s.role)+' '+s.role.charAt(0).toUpperCase()+s.role.slice(1)+'</div>'+
@@ -171,7 +232,7 @@ function render() {
   ).join('');
   document.getElementById('content').innerHTML =
     '<div class="totals-grid">'+
-    '<div class="total-card highlight"><div class="total-label">Gross Income</div><div class="total-value">$'+tp.toFixed(2)+'</div><div class="total-sub">'+th.toFixed(2)+' hrs · '+shifts.length+' shifts</div></div>'+
+    '<div class="total-card highlight"><div class="total-label">Gross Income</div><div class="total-value">$'+tp.toFixed(2)+change+'</div><div class="total-sub">'+th.toFixed(2)+' hrs · '+shifts.length+' shifts</div></div>'+
     '<div class="total-card"><div class="total-label">Hours</div><div class="total-value">'+th.toFixed(2)+'</div><div class="total-sub">this period</div></div>'+
     '<div class="total-card"><div class="total-label">Est. Tips</div><div class="total-value">$'+tips+'</div><div class="total-sub">cafe shifts</div></div>'+
     '</div>'+
@@ -193,9 +254,12 @@ function render() {
     '<div class="tax-row"><span class="label" style="color:#fff">Total Withheld</span><span class="val" style="color:#f87171">-$'+tax.total.toFixed(2)+'</span></div>'+
     '</div>'+
     '<div class="tax-note">* Estimates based on 2026 rates, single filer. Actual withholding may vary.</div>';
+  renderLog();
 }
+
 async function loadShifts() {
   document.getElementById('content').innerHTML = '<div class="loading"><span class="dot-anim">Syncing shifts</span></div>';
+  document.getElementById('log-section').innerHTML = '';
   document.getElementById('status').textContent = '';
   let lastError = null;
   for (const url of PROXIES) {
@@ -212,9 +276,10 @@ async function loadShifts() {
   }
   document.getElementById('content').innerHTML = '<div class="error">⚠ Could not load shifts.<br><br>Check your connection and try refreshing.<br><br>Error: '+lastError?.message+'</div>';
 }
+
 function selectPeriod(offset) {
   periodOffset = offset;
-  document.querySelectorAll('.period-btn').forEach((b,i) => b.classList.toggle('active',[0,-1,1][i]===offset));
+  document.querySelectorAll('.period-btn').forEach((b,i) => b.classList.toggle('active',[-1,0,1][i]===offset));
   if (allShifts.length > 0) render();
 }
 loadShifts();
