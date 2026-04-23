@@ -130,7 +130,7 @@ function parseICS(text) {
     const pd = (s) => {
       if (!s) return null;
       const c = s.replace(/[TZ]/g,'');
-      if (c.length >= 12) return new Date(+c.slice(0,4), +c.slice(4,6)-1, +c.slice(6,8), +c.slice(8,10), +c.slice(10,12));
+      if (c.length >= 12) return new Date(Date.UTC(+c.slice(0,4), +c.slice(4,6)-1, +c.slice(6,8), +c.slice(8,10), +c.slice(10,12)));
       return new Date(s);
     };
     const start = pd(dtstart), end = pd(dtend);
