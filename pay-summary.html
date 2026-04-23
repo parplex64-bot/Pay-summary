@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -63,11 +64,11 @@
   .tax-row .val { color: #93c5fd; font-family: 'DM Mono', monospace; font-size: 12px; }
   .tax-note { font-size: 10px; color: #555; font-family: 'DM Mono', monospace; margin-bottom: 24px; text-align: center; }
   .month-folder { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
-  .month-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #111; cursor: pointer; user-select: none; }
+  .month-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #111; cursor: pointer; user-select: none; -webkit-user-select: none; }
   .month-header:hover { background: #1a1a1a; }
   .month-name { font-size: 12px; font-weight: 600; color: #fff; font-family: 'DM Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
-  .month-meta { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
-  .month-arrow { font-size: 10px; color: var(--muted); transition: transform 0.2s; }
+  .month-meta { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .month-arrow { font-size: 10px; color: var(--muted); transition: transform 0.2s; display: inline-block; }
   .month-arrow.open { transform: rotate(90deg); }
   .month-body { display: none; border-top: 1px solid var(--border); }
   .month-body.open { display: block; }
@@ -81,15 +82,14 @@
   .log-change.up { color: #4ade80; }
   .log-change.down { color: #f87171; }
   .log-change.flat { color: #888; }
-  .proxy-status { font-size: 10px; color: #444; font-family: 'DM Mono', monospace; text-align: center; margin-top: 8px; }
   .refresh-btn { width: 100%; background: #1a1a1a; border: 1px solid #444; color: #fff; padding: 14px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; margin-top: 8px; }
   .refresh-btn:hover { background: #2a2a2a; border-color: #fff; }
   .status { text-align: center; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 16px; }
   .loading { text-align: center; padding: 48px 24px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; }
   .loading-detail { font-size: 10px; color: #444; margin-top: 8px; font-family: 'DM Mono', monospace; }
-  .error { background: #1a0a0a; border: 1px solid #7f1d1d; color: #fca5a5; padding: 16px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.8; }
+  .error { background: #1a0a0a; border: 1px solid #7f1d1d; color: #fca5a5; padding: 16px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.8; margin-bottom: 16px; }
   .tip-note { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
-  .empty-log { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; text-align: center; padding: 24px; }
+  .empty-log { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; text-align: center; padding: 24px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
 </style>
 </head>
 <body>
@@ -97,7 +97,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v1.5.0</div>
+  <div class="version">v1.6.0</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -105,32 +105,68 @@
   <button class="period-btn" onclick="selectPeriod(1)">Next</button>
 </div>
 <div class="period-label" id="periodLabel">—</div>
-<div id="content"><div class="loading"><span id="loadingMsg">Connecting to When I Work</span>...<div class="loading-detail" id="loadingDetail">Trying proxy 1 of 3</div></div></div>
+<div id="content">
+  <div class="loading">
+    Connecting to When I Work...<br>
+    <div class="loading-detail" id="loadingDetail">Starting up...</div>
+  </div>
+</div>
 <div id="log-section"></div>
 <button class="refresh-btn" onclick="loadShifts()">↻ Refresh Shifts</button>
 <div class="status" id="status"></div>
+
 <script>
-const VERSION = 'v1.5.0';
-const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/ca5d37783d1d108d2afd3ace9efaaa8324e408bb.ics';
+const VERSION = 'v1.6.0';
+const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
+const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
+
+// Multiple proxy strategies
 const PROXIES = [
-  { name: 'corsproxy.io', url: `https://corsproxy.io/?${encodeURIComponent(ICAL_SOURCE)}` },
-  { name: 'allorigins', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(ICAL_SOURCE)}` },
-  { name: 'cors-anywhere', url: `https://cors-anywhere.herokuapp.com/${ICAL_SOURCE}` },
+  {
+    name: 'corsproxy.io',
+    url: () => 'https://corsproxy.io/?' + encodeURIComponent(ICAL_SOURCE)
+  },
+  {
+    name: 'allorigins',
+    url: () => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(ICAL_SOURCE)
+  },
+  {
+    name: 'htmldriven',
+    url: () => 'https://cors.eu.org/' + ICAL_SOURCE
+  },
+  {
+    name: 'thingproxy',
+    url: () => 'https://thingproxy.freeboard.io/fetch/' + ICAL_SOURCE
+  }
 ];
-const RATES = { cashier:{hourly:16,tips:0}, bouncer:{hourly:16,tips:0}, cafe:{hourly:15.05,tips:30} };
+
+const RATES = {
+  cashier: { hourly: 16, tips: 0 },
+  bouncer: { hourly: 16, tips: 0 },
+  cafe:    { hourly: 15.05, tips: 30 }
+};
+
 let allShifts = [], periodOffset = 0;
 
+// ─── Tax calculation ───────────────────────────────────────────────────────────
 function calcTax(gross) {
-  const ss = gross * 0.062, medicare = gross * 0.0145, annual = gross * 26;
-  let annualFed = annual <= 11925 ? annual*0.10 : annual <= 48475 ? 1192.50+(annual-11925)*0.12 : 5580.50+(annual-48475)*0.22;
+  const ss = gross * 0.062;
+  const medicare = gross * 0.0145;
+  const annual = gross * 26;
+  let annualFed = annual <= 11925 ? annual * 0.10
+    : annual <= 48475 ? 1192.50 + (annual - 11925) * 0.12
+    : 5580.50 + (annual - 48475) * 0.22;
   const federal = annualFed / 26;
-  const oregon = (annual <= 10000 ? annual*0.0475 : 475+(annual-10000)*0.0675) / 26;
+  const annualOr = annual <= 10000 ? annual * 0.0475 : 475 + (annual - 10000) * 0.0675;
+  const oregon = annualOr / 26;
   const total = ss + medicare + federal + oregon;
   return { ss, medicare, federal, oregon, total, net: gross - total };
 }
 
+// ─── Pay period helpers ────────────────────────────────────────────────────────
 function getPayPeriod(offset = 0) {
-  const anchor = new Date(2026, 3, 20), msPerPeriod = 14 * 86400000;
+  const anchor = new Date(2026, 3, 20); // Apr 20 2026
+  const msPerPeriod = 14 * 86400000;
   const periodIndex = Math.floor((new Date() - anchor) / msPerPeriod) + offset;
   const start = new Date(anchor.getTime() + periodIndex * msPerPeriod);
   const end = new Date(start.getTime() + 13 * 86400000);
@@ -139,163 +175,249 @@ function getPayPeriod(offset = 0) {
 }
 
 function getShiftsForPeriod(offset) {
-  const {start, end} = getPayPeriod(offset);
+  const { start, end } = getPayPeriod(offset);
   return allShifts.filter(s => s.start >= start && s.start <= end);
 }
 
-function formatDate(d) { return d.toLocaleDateString('en-US', {month:'short',day:'numeric'}); }
-function monthKey(d) { return d.toLocaleDateString('en-US', {month:'long',year:'numeric'}); }
+function formatDate(d) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
+function monthKey(d) {
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+// ─── iCal parser ──────────────────────────────────────────────────────────────
 function parseICS(text) {
   const events = [];
   const blocks = text.split('BEGIN:VEVENT');
   for (let i = 1; i < blocks.length; i++) {
     const block = blocks[i];
-    const get = (key) => { const m = block.match(new RegExp(key + '[^:]*:([^\\r\\n]+)')); return m ? m[1].trim() : ''; };
+    const get = key => {
+      const m = block.match(new RegExp(key + '[^:]*:([^\r\n]+)'));
+      return m ? m[1].trim() : '';
+    };
     const title = get('SUMMARY'), dtstart = get('DTSTART'), dtend = get('DTEND');
     if (!title || !dtstart) continue;
-    const pd = (s) => {
+    const pd = s => {
       if (!s) return null;
-      const c = s.replace(/[TZ]/g,'');
-      if (c.length >= 12) return new Date(Date.UTC(+c.slice(0,4),+c.slice(4,6)-1,+c.slice(6,8),+c.slice(8,10),+c.slice(10,12)));
+      const c = s.replace(/[TZ]/g, '');
+      if (c.length >= 12) return new Date(Date.UTC(
+        +c.slice(0,4), +c.slice(4,6)-1, +c.slice(6,8),
+        +c.slice(8,10), +c.slice(10,12)
+      ));
       return new Date(s);
     };
     const start = pd(dtstart), end = pd(dtend);
     if (!start) continue;
     const t = title.toLowerCase();
-    let role = t.includes('cashier')?'cashier':t.includes('bouncer')?'bouncer':(t.includes('cafe')||t.includes('pickle'))?'cafe':'unknown';
+    let role = t.includes('cashier') ? 'cashier'
+      : t.includes('bouncer') ? 'bouncer'
+      : (t.includes('cafe') || t.includes('pickle')) ? 'cafe'
+      : 'unknown';
     if (role === 'unknown') continue;
     const hours = end ? (end - start) / 3600000 : 0;
     const rate = RATES[role];
-    events.push({ title, start, end, role, hours, pay: hours*rate.hourly+rate.tips, tips: rate.tips });
+    events.push({ title, start, end, role, hours, pay: hours * rate.hourly + rate.tips, tips: rate.tips });
   }
   return events;
 }
 
-function badge(role) { return '<span class="role-badge '+role+'">'+role.charAt(0).toUpperCase()+role.slice(1)+'</span>'; }
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function badge(role) {
+  return '<span class="role-badge ' + role + '">' + role.charAt(0).toUpperCase() + role.slice(1) + '</span>';
+}
 
 function changeBadge(cur, prev, small) {
   if (!prev) return '';
-  const pct = ((cur-prev)/prev*100).toFixed(1);
-  const cls = pct>0?'up':pct<0?'down':'flat', arrow = pct>0?'▲':pct<0?'▼':'—';
+  const pct = ((cur - prev) / prev * 100).toFixed(1);
+  const cls = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+  const arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '—';
+  const abs = Math.abs(pct);
   return small
-    ? '<div class="log-change '+cls+'">'+arrow+' '+Math.abs(pct)+'%</div>'
-    : '<span class="change-badge '+cls+'">'+arrow+' '+Math.abs(pct)+'%</span>';
+    ? '<div class="log-change ' + cls + '">' + arrow + ' ' + abs + '%</div>'
+    : '<span class="change-badge ' + cls + '">' + arrow + ' ' + abs + '%</span>';
 }
 
 function toggleMonth(id) {
-  document.getElementById('body-'+id).classList.toggle('open');
-  document.getElementById('arrow-'+id).classList.toggle('open');
+  document.getElementById('body-' + id).classList.toggle('open');
+  document.getElementById('arrow-' + id).classList.toggle('open');
 }
 
+// ─── Log section ──────────────────────────────────────────────────────────────
 function renderLog() {
-  const {index: ci} = getPayPeriod(0);
+  const { index: ci } = getPayPeriod(0);
+
+  // Collect all PAST periods (skip current)
   const periods = [];
-  for (let i = ci-1; i >= 0; i--) {
+  for (let i = ci - 1; i >= 0; i--) {
     const offset = i - ci;
-    const {start, end} = getPayPeriod(offset);
+    const { start, end } = getPayPeriod(offset);
     const shifts = getShiftsForPeriod(offset);
     if (!shifts.length) continue;
-    const total = shifts.reduce((s,x)=>s+x.pay,0);
-    const hours = shifts.reduce((s,x)=>s+x.hours,0);
-    const prevTotal = getShiftsForPeriod(offset-1).reduce((s,x)=>s+x.pay,0);
-    periods.push({ start, end, total, hours, count: shifts.length, prevTotal, monthKey: monthKey(start) });
+    const total = shifts.reduce((s, x) => s + x.pay, 0);
+    const hours = shifts.reduce((s, x) => s + x.hours, 0);
+    const prevTotal = getShiftsForPeriod(offset - 1).reduce((s, x) => s + x.pay, 0);
+    periods.push({ start, end, total, hours, count: shifts.length, prevTotal, mKey: monthKey(start) });
   }
+
+  const el = document.getElementById('log-section');
+
   if (!periods.length) {
-    document.getElementById('log-section').innerHTML =
-      '<div class="section-title" style="margin-top:8px;">Pay Period Log</div>'+
+    el.innerHTML =
+      '<div class="section-title" style="margin-top:8px;">Pay Period Log</div>' +
       '<div class="empty-log">No previous periods yet — check back next pay period!</div>';
     return;
   }
+
+  // Group by month
   const months = {};
+  const monthOrder = [];
   periods.forEach(p => {
-    if (!months[p.monthKey]) months[p.monthKey] = { periods:[], total:0, hours:0 };
-    months[p.monthKey].periods.push(p);
-    months[p.monthKey].total += p.total;
-    months[p.monthKey].hours += p.hours;
+    if (!months[p.mKey]) { months[p.mKey] = { periods: [], total: 0, hours: 0 }; monthOrder.push(p.mKey); }
+    months[p.mKey].periods.push(p);
+    months[p.mKey].total += p.total;
+    months[p.mKey].hours += p.hours;
   });
+
   let html = '<div class="section-title" style="margin-top:8px;">Pay Period Log</div>';
-  let idx = 0;
-  for (const [mName, data] of Object.entries(months)) {
-    const id = 'month'+idx, isFirst = idx===0; idx++;
-    html += '<div class="month-folder">'+
-      '<div class="month-header" onclick="toggleMonth(''+id+'')">'+
-      '<div><div class="month-name">'+mName+'</div>'+
-      '<div class="month-meta">$'+data.total.toFixed(2)+' · '+data.hours.toFixed(2)+' hrs · '+data.periods.length+' period'+(data.periods.length>1?'s':'')+'</div></div>'+
-      '<span class="month-arrow'+(isFirst?' open':'') +'" id="arrow-'+id+'">▶</span></div>'+
-      '<div class="month-body'+(isFirst?' open':'')+'" id="body-'+id+'">';
+  monthOrder.forEach((mName, idx) => {
+    const data = months[mName];
+    const id = 'month' + idx;
+    const isFirst = idx === 0;
+    html +=
+      '<div class="month-folder">' +
+        '<div class="month-header" onclick="toggleMonth(\'' + id + '\')">' +
+          '<div>' +
+            '<div class="month-name">' + mName + '</div>' +
+            '<div class="month-meta">$' + data.total.toFixed(2) + ' · ' + data.hours.toFixed(2) + ' hrs · ' + data.periods.length + ' period' + (data.periods.length > 1 ? 's' : '') + '</div>' +
+          '</div>' +
+          '<span class="month-arrow' + (isFirst ? ' open' : '') + '" id="arrow-' + id + '">▶</span>' +
+        '</div>' +
+        '<div class="month-body' + (isFirst ? ' open' : '') + '" id="body-' + id + '">';
+
     data.periods.forEach(p => {
-      html += '<div class="log-card">'+
-        '<div><div class="log-period">'+formatDate(p.start)+' – '+formatDate(p.end)+'</div>'+
-        '<div class="log-sub">'+p.hours.toFixed(2)+' hrs · '+p.count+' shift'+(p.count>1?'s':'')+'</div></div>'+
-        '<div class="log-right"><div class="log-pay">$'+p.total.toFixed(2)+'</div>'+changeBadge(p.total,p.prevTotal,true)+'</div></div>';
+      const label = formatDate(p.start) + ' – ' + formatDate(p.end);
+      html +=
+        '<div class="log-card">' +
+          '<div>' +
+            '<div class="log-period">' + label + '</div>' +
+            '<div class="log-sub">' + p.hours.toFixed(2) + ' hrs · ' + p.count + ' shift' + (p.count > 1 ? 's' : '') + '</div>' +
+          '</div>' +
+          '<div class="log-right">' +
+            '<div class="log-pay">$' + p.total.toFixed(2) + '</div>' +
+            changeBadge(p.total, p.prevTotal, true) +
+          '</div>' +
+        '</div>';
     });
+
     html += '</div></div>';
-  }
-  document.getElementById('log-section').innerHTML = html;
+  });
+
+  el.innerHTML = html;
 }
 
+// ─── Main render ──────────────────────────────────────────────────────────────
 function render() {
-  const {start,end} = getPayPeriod(periodOffset);
-  document.getElementById('periodLabel').textContent = formatDate(start)+' – '+formatDate(end);
-  const shifts = getShiftsForPeriod(periodOffset).sort((a,b)=>a.start-b.start);
-  if (!shifts.length) { document.getElementById('content').innerHTML='<div class="loading">No shifts found for this period.</div>'; renderLog(); return; }
+  const { start, end } = getPayPeriod(periodOffset);
+  document.getElementById('periodLabel').textContent = formatDate(start) + ' – ' + formatDate(end);
+
+  const shifts = getShiftsForPeriod(periodOffset).sort((a, b) => a.start - b.start);
+  if (!shifts.length) {
+    document.getElementById('content').innerHTML = '<div class="loading">No shifts found for this period.</div>';
+    renderLog();
+    return;
+  }
+
   let th=0,tp=0,ch=0,bh=0,fh=0,cp=0,bp=0,fp=0,tips=0;
-  shifts.forEach(s=>{
-    th+=s.hours; tp+=s.pay;
-    if(s.role==='cashier'){ch+=s.hours;cp+=s.pay;}
-    if(s.role==='bouncer'){bh+=s.hours;bp+=s.pay;}
-    if(s.role==='cafe'){fh+=s.hours;fp+=s.pay;tips+=s.tips;}
+  shifts.forEach(s => {
+    th += s.hours; tp += s.pay;
+    if (s.role === 'cashier') { ch += s.hours; cp += s.pay; }
+    if (s.role === 'bouncer') { bh += s.hours; bp += s.pay; }
+    if (s.role === 'cafe')    { fh += s.hours; fp += s.pay; tips += s.tips; }
   });
-  const tax=calcTax(tp), prevTotal=getShiftsForPeriod(periodOffset-1).reduce((s,x)=>s+x.pay,0);
-  const change=changeBadge(tp,prevTotal,false);
-  const cards=shifts.map((s,i)=>
-    '<div class="shift-card" style="animation-delay:'+(i*0.05)+'s">'+
-    '<div><div class="shift-role">'+badge(s.role)+' '+s.role.charAt(0).toUpperCase()+s.role.slice(1)+'</div>'+
-    '<div class="shift-date">'+s.start.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+
-    ' · '+s.start.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+
-    ' – '+(s.end?s.end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'?')+'</div></div>'+
-    '<div class="shift-right"><div class="shift-pay">$'+s.pay.toFixed(2)+'</div>'+
-    '<div class="shift-hours">'+s.hours.toFixed(2)+' hrs'+(s.tips?' + $'+s.tips+' tips':'')+'</div></div></div>'
+
+  const tax = calcTax(tp);
+  const prevTotal = getShiftsForPeriod(periodOffset - 1).reduce((s, x) => s + x.pay, 0);
+  const change = changeBadge(tp, prevTotal, false);
+
+  const cards = shifts.map((s, i) =>
+    '<div class="shift-card" style="animation-delay:' + (i * 0.05) + 's">' +
+      '<div>' +
+        '<div class="shift-role">' + badge(s.role) + ' ' + s.role.charAt(0).toUpperCase() + s.role.slice(1) + '</div>' +
+        '<div class="shift-date">' +
+          s.start.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }) +
+          ' · ' + s.start.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) +
+          ' – ' + (s.end ? s.end.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '?') +
+        '</div>' +
+      '</div>' +
+      '<div class="shift-right">' +
+        '<div class="shift-pay">$' + s.pay.toFixed(2) + '</div>' +
+        '<div class="shift-hours">' + s.hours.toFixed(2) + ' hrs' + (s.tips ? ' + $' + s.tips + ' tips' : '') + '</div>' +
+      '</div>' +
+    '</div>'
   ).join('');
-  document.getElementById('content').innerHTML=
-    '<div class="totals-grid">'+
-    '<div class="total-card highlight"><div class="total-label">Gross Income</div><div class="total-value">$'+tp.toFixed(2)+change+'</div><div class="total-sub">'+th.toFixed(2)+' hrs · '+shifts.length+' shifts</div></div>'+
-    '<div class="total-card"><div class="total-label">Hours</div><div class="total-value">'+th.toFixed(2)+'</div><div class="total-sub">this period</div></div>'+
-    '<div class="total-card"><div class="total-label">Est. Tips</div><div class="total-value">$'+tips+'</div><div class="total-sub">cafe shifts</div></div>'+
-    '</div>'+
-    '<div class="section-title">Shifts</div><div class="shifts-list">'+cards+'</div>'+
-    '<div class="section-title">By Role</div>'+
-    '<div class="breakdown">'+
-    (ch>0?'<div class="breakdown-row"><span class="label">Cashier</span><span class="val">'+ch.toFixed(2)+' hrs · $'+cp.toFixed(2)+'</span></div>':'')+
-    (bh>0?'<div class="breakdown-row"><span class="label">Bouncer</span><span class="val">'+bh.toFixed(2)+' hrs · $'+bp.toFixed(2)+'</span></div>':'')+
-    (fh>0?'<div class="breakdown-row"><span class="label">Cafe</span><span class="val">'+fh.toFixed(2)+' hrs · $'+fp.toFixed(2)+' <span class="tip-note">(incl. tips)</span></span></div>':'')+
-    '<div class="breakdown-row"><span class="label">Total</span><span class="val">'+th.toFixed(2)+' hrs · $'+tp.toFixed(2)+'</span></div>'+
-    '</div>'+
-    '<div class="section-title">After Taxes · Oregon · Single</div>'+
-    '<div class="tax-highlight"><div class="total-label">Estimated Take-Home</div><div class="total-value">$'+tax.net.toFixed(2)+'</div><div class="total-sub">after all deductions this period</div></div>'+
-    '<div class="tax-breakdown">'+
-    '<div class="tax-row"><span class="label">Social Security (6.2%)</span><span class="val">-$'+tax.ss.toFixed(2)+'</span></div>'+
-    '<div class="tax-row"><span class="label">Medicare (1.45%)</span><span class="val">-$'+tax.medicare.toFixed(2)+'</span></div>'+
-    '<div class="tax-row"><span class="label">Federal Income Tax</span><span class="val">-$'+tax.federal.toFixed(2)+'</span></div>'+
-    '<div class="tax-row"><span class="label">Oregon State Tax</span><span class="val">-$'+tax.oregon.toFixed(2)+'</span></div>'+
-    '<div class="tax-row"><span class="label" style="color:#fff">Total Withheld</span><span class="val" style="color:#f87171">-$'+tax.total.toFixed(2)+'</span></div>'+
-    '</div>'+
+
+  document.getElementById('content').innerHTML =
+    '<div class="totals-grid">' +
+      '<div class="total-card highlight">' +
+        '<div class="total-label">Gross Income</div>' +
+        '<div class="total-value">$' + tp.toFixed(2) + change + '</div>' +
+        '<div class="total-sub">' + th.toFixed(2) + ' hrs · ' + shifts.length + ' shifts</div>' +
+      '</div>' +
+      '<div class="total-card">' +
+        '<div class="total-label">Hours</div>' +
+        '<div class="total-value">' + th.toFixed(2) + '</div>' +
+        '<div class="total-sub">this period</div>' +
+      '</div>' +
+      '<div class="total-card">' +
+        '<div class="total-label">Est. Tips</div>' +
+        '<div class="total-value">$' + tips + '</div>' +
+        '<div class="total-sub">cafe shifts</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="section-title">Shifts</div>' +
+    '<div class="shifts-list">' + cards + '</div>' +
+
+    '<div class="section-title">By Role</div>' +
+    '<div class="breakdown">' +
+      (ch > 0 ? '<div class="breakdown-row"><span class="label">Cashier</span><span class="val">' + ch.toFixed(2) + ' hrs · $' + cp.toFixed(2) + '</span></div>' : '') +
+      (bh > 0 ? '<div class="breakdown-row"><span class="label">Bouncer</span><span class="val">' + bh.toFixed(2) + ' hrs · $' + bp.toFixed(2) + '</span></div>' : '') +
+      (fh > 0 ? '<div class="breakdown-row"><span class="label">Cafe</span><span class="val">' + fh.toFixed(2) + ' hrs · $' + fp.toFixed(2) + ' <span class="tip-note">(incl. tips)</span></span></div>' : '') +
+      '<div class="breakdown-row"><span class="label">Total</span><span class="val">' + th.toFixed(2) + ' hrs · $' + tp.toFixed(2) + '</span></div>' +
+    '</div>' +
+
+    '<div class="section-title">After Taxes · Oregon · Single</div>' +
+    '<div class="tax-highlight">' +
+      '<div class="total-label">Estimated Take-Home</div>' +
+      '<div class="total-value">$' + tax.net.toFixed(2) + '</div>' +
+      '<div class="total-sub">after all deductions this period</div>' +
+    '</div>' +
+    '<div class="tax-breakdown">' +
+      '<div class="tax-row"><span class="label">Social Security (6.2%)</span><span class="val">-$' + tax.ss.toFixed(2) + '</span></div>' +
+      '<div class="tax-row"><span class="label">Medicare (1.45%)</span><span class="val">-$' + tax.medicare.toFixed(2) + '</span></div>' +
+      '<div class="tax-row"><span class="label">Federal Income Tax</span><span class="val">-$' + tax.federal.toFixed(2) + '</span></div>' +
+      '<div class="tax-row"><span class="label">Oregon State Tax</span><span class="val">-$' + tax.oregon.toFixed(2) + '</span></div>' +
+      '<div class="tax-row"><span class="label" style="color:#fff">Total Withheld</span><span class="val" style="color:#f87171">-$' + tax.total.toFixed(2) + '</span></div>' +
+    '</div>' +
     '<div class="tax-note">* Estimates based on 2026 rates, single filer. Actual withholding may vary.</div>';
+
   renderLog();
 }
 
+// ─── Fetch with timeout ────────────────────────────────────────────────────────
 async function tryFetch(proxy, index) {
   const detail = document.getElementById('loadingDetail');
-  if (detail) detail.textContent = 'Trying '+proxy.name+' ('+(index+1)+' of '+PROXIES.length+')...';
+  if (detail) detail.textContent = 'Trying ' + proxy.name + ' (' + (index + 1) + ' of ' + PROXIES.length + ')...';
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
+  const timer = setTimeout(() => controller.abort(), 6000);
   try {
-    const res = await fetch(proxy.url, { signal: controller.signal });
+    const res = await fetch(proxy.url(), { signal: controller.signal });
     clearTimeout(timer);
-    if (!res.ok) throw new Error('HTTP '+res.status);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
-    if (!text.includes('BEGIN:VCALENDAR')) throw new Error('Not a valid calendar');
+    if (!text.includes('BEGIN:VCALENDAR')) throw new Error('Invalid calendar data');
     return text;
   } catch(e) {
     clearTimeout(timer);
@@ -305,31 +427,44 @@ async function tryFetch(proxy, index) {
 
 async function loadShifts() {
   document.getElementById('content').innerHTML =
-    '<div class="loading"><span id="loadingMsg">Connecting to When I Work</span>...<div class="loading-detail" id="loadingDetail">Trying proxy 1 of '+PROXIES.length+'</div></div>';
+    '<div class="loading">Connecting to When I Work...' +
+    '<div class="loading-detail" id="loadingDetail">Starting up...</div></div>';
   document.getElementById('log-section').innerHTML = '';
   document.getElementById('status').textContent = '';
+
   const errors = [];
   for (let i = 0; i < PROXIES.length; i++) {
     try {
       const text = await tryFetch(PROXIES[i], i);
       allShifts = parseICS(text);
       render();
-      document.getElementById('status').textContent = VERSION+' · Last synced: '+new Date().toLocaleTimeString()+' via '+PROXIES[i].name;
+      document.getElementById('status').textContent =
+        VERSION + ' · Synced ' + new Date().toLocaleTimeString() + ' via ' + PROXIES[i].name;
       return;
-    } catch(e) { errors.push(PROXIES[i].name+': '+e.message); }
+    } catch(e) {
+      errors.push(PROXIES[i].name + ': ' + e.message);
+    }
   }
+
   document.getElementById('content').innerHTML =
-    '<div class="error">⚠ Could not load shifts from any source.<br><br>'+
-    errors.map(e=>'• '+e).join('<br>')+
-    '<br><br>Check your connection and tap Refresh to try again.</div>';
+    '<div class="error">' +
+    '⚠ Could not load shifts.<br><br>' +
+    errors.map(e => '• ' + e).join('<br>') +
+    '<br><br>Tap Refresh to try again.' +
+    '</div>';
+  document.getElementById('log-section').innerHTML = '';
 }
 
 function selectPeriod(offset) {
   periodOffset = offset;
-  document.querySelectorAll('.period-btn').forEach((b,i)=>b.classList.toggle('active',[-1,0,1][i]===offset));
+  document.querySelectorAll('.period-btn').forEach((b, i) =>
+    b.classList.toggle('active', [-1, 0, 1][i] === offset)
+  );
   if (allShifts.length > 0) render();
 }
+
 loadShifts();
 </script>
+
 </body>
 </html>
