@@ -90,6 +90,8 @@
   .error { background: #1a0a0a; border: 1px solid #7f1d1d; color: #fca5a5; padding: 16px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.8; margin-bottom: 16px; }
   .tip-note { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
   .empty-log { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; text-align: center; padding: 24px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
+  #content { transition: opacity 0.2s ease, transform 0.2s ease; }
+  #content.fading { opacity: 0; transform: translateY(8px); pointer-events: none; }
 </style>
 </head>
 <body>
@@ -456,11 +458,18 @@ async function loadShifts() {
 }
 
 function selectPeriod(offset) {
+  if (offset === periodOffset) return;
   periodOffset = offset;
   document.querySelectorAll('.period-btn').forEach((b, i) =>
     b.classList.toggle('active', [-1, 0, 1][i] === offset)
   );
-  if (allShifts.length > 0) render();
+  if (allShifts.length === 0) return;
+  const content = document.getElementById('content');
+  content.classList.add('fading');
+  setTimeout(() => {
+    render();
+    content.classList.remove('fading');
+  }, 200);
 }
 
 loadShifts();
