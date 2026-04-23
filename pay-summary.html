@@ -1,22 +1,4 @@
 <!DOCTYPE html>
-
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Copy Code</title>
-<style>
-  body { background: #000; color: #fff; font-family: monospace; padding: 20px; }
-  button { width: 100%; padding: 16px; font-size: 16px; background: #222; border: 1px solid #fff; color: #fff; border-radius: 10px; cursor: pointer; margin-bottom: 16px; font-family: monospace; }
-  button.copied { background: #333; color: #aaa; }
-  pre { background: #111; padding: 16px; border-radius: 10px; overflow: auto; font-size: 11px; color: #555; border: 1px solid #222; }
-</style>
-</head>
-<body>
-<button id="btn" onclick="copyCode()">📋 Tap to Copy Code</button>
-<pre id="code"></pre>
-<script>
-const code = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -128,241 +110,225 @@ const code = `<!DOCTYPE html>
 <script>
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/ca5d37783d1d108d2afd3ace9efaaa8324e408bb.ics';
 const PROXIES = [
-  \`https://corsproxy.io/?\${encodeURIComponent(ICAL_SOURCE)}\`,
-  \`https://api.allorigins.win/raw?url=\${encodeURIComponent(ICAL_SOURCE)}\`,
-  \`https://cors-anywhere.herokuapp.com/\${ICAL_SOURCE}\`,
+  `https://corsproxy.io/?${encodeURIComponent(ICAL_SOURCE)}`,
+  `https://api.allorigins.win/raw?url=${encodeURIComponent(ICAL_SOURCE)}`,
+  `https://cors-anywhere.herokuapp.com/${ICAL_SOURCE}`,
 ];
 const RATES = { cashier:{hourly:16,tips:0}, bouncer:{hourly:16,tips:0}, cafe:{hourly:15.05,tips:30} };
 let allShifts = [], periodOffset = 0;
 
 function calcTax(gross) {
-const ss = gross * 0.062;
-const medicare = gross * 0.0145;
-const annual = gross * 26;
-let annualFed = annual <= 11925 ? annual * 0.10 : annual <= 48475 ? 1192.50 + (annual-11925)*0.12 : 5580.50 + (annual-48475)*0.22;
-const federal = annualFed / 26;
-let annualOr = annual <= 10000 ? annual * 0.0475 : 475 + (annual-10000)*0.0675;
-const oregon = annualOr / 26;
-const total = ss + medicare + federal + oregon;
-return { ss, medicare, federal, oregon, total, net: gross - total };
+  const ss = gross * 0.062;
+  const medicare = gross * 0.0145;
+  const annual = gross * 26;
+  let annualFed = annual <= 11925 ? annual * 0.10 : annual <= 48475 ? 1192.50 + (annual-11925)*0.12 : 5580.50 + (annual-48475)*0.22;
+  const federal = annualFed / 26;
+  let annualOr = annual <= 10000 ? annual * 0.0475 : 475 + (annual-10000)*0.0675;
+  const oregon = annualOr / 26;
+  const total = ss + medicare + federal + oregon;
+  return { ss, medicare, federal, oregon, total, net: gross - total };
 }
 
 function getPayPeriod(offset = 0) {
-const anchor = new Date(2026, 3, 20);
-const msPerPeriod = 14 * 86400000;
-const periodIndex = Math.floor((new Date() - anchor) / msPerPeriod) + offset;
-const start = new Date(anchor.getTime() + periodIndex * msPerPeriod);
-const end = new Date(start.getTime() + 13 * 86400000);
-end.setHours(23, 59, 59);
-return { start, end, index: periodIndex };
+  const anchor = new Date(2026, 3, 20);
+  const msPerPeriod = 14 * 86400000;
+  const periodIndex = Math.floor((new Date() - anchor) / msPerPeriod) + offset;
+  const start = new Date(anchor.getTime() + periodIndex * msPerPeriod);
+  const end = new Date(start.getTime() + 13 * 86400000);
+  end.setHours(23, 59, 59);
+  return { start, end, index: periodIndex };
 }
 
 function getShiftsForPeriod(offset) {
-const {start, end} = getPayPeriod(offset);
-return allShifts.filter(s => s.start >= start && s.start <= end);
+  const {start, end} = getPayPeriod(offset);
+  return allShifts.filter(s => s.start >= start && s.start <= end);
 }
 
-function formatDate(d) { return d.toLocaleDateString(‘en-US’, {month:‘short’,day:‘numeric’}); }
-function monthKey(d) { return d.toLocaleDateString(‘en-US’, {month:‘long’,year:‘numeric’}); }
+function formatDate(d) { return d.toLocaleDateString('en-US', {month:'short',day:'numeric'}); }
+function monthKey(d) { return d.toLocaleDateString('en-US', {month:'long',year:'numeric'}); }
 
 function parseICS(text) {
-const events = [];
-const blocks = text.split(‘BEGIN:VEVENT’);
-for (let i = 1; i < blocks.length; i++) {
-const block = blocks[i];
-const get = (key) => { const m = block.match(new RegExp(key + ‘[^:]*:([^\\r\\n]+)’)); return m ? m[1].trim() : ‘’; };
-const title = get(‘SUMMARY’), dtstart = get(‘DTSTART’), dtend = get(‘DTEND’);
-if (!title || !dtstart) continue;
-const pd = (s) => {
-if (!s) return null;
-const c = s.replace(/[TZ]/g,’’);
-if (c.length >= 12) return new Date(Date.UTC(+c.slice(0,4), +c.slice(4,6)-1, +c.slice(6,8), +c.slice(8,10), +c.slice(10,12)));
-return new Date(s);
-};
-const start = pd(dtstart), end = pd(dtend);
-if (!start) continue;
-const t = title.toLowerCase();
-let role = t.includes(‘cashier’)?‘cashier’:t.includes(‘bouncer’)?‘bouncer’:(t.includes(‘cafe’)||t.includes(‘pickle’))?‘cafe’:‘unknown’;
-if (role === ‘unknown’) continue;
-const hours = end ? (end - start) / 3600000 : 0;
-const rate = RATES[role];
-events.push({ title, start, end, role, hours, pay: hours * rate.hourly + rate.tips, tips: rate.tips });
-}
-return events;
+  const events = [];
+  const blocks = text.split('BEGIN:VEVENT');
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    const get = (key) => { const m = block.match(new RegExp(key + '[^:]*:([^\\r\\n]+)')); return m ? m[1].trim() : ''; };
+    const title = get('SUMMARY'), dtstart = get('DTSTART'), dtend = get('DTEND');
+    if (!title || !dtstart) continue;
+    const pd = (s) => {
+      if (!s) return null;
+      const c = s.replace(/[TZ]/g,'');
+      if (c.length >= 12) return new Date(Date.UTC(+c.slice(0,4), +c.slice(4,6)-1, +c.slice(6,8), +c.slice(8,10), +c.slice(10,12)));
+      return new Date(s);
+    };
+    const start = pd(dtstart), end = pd(dtend);
+    if (!start) continue;
+    const t = title.toLowerCase();
+    let role = t.includes('cashier')?'cashier':t.includes('bouncer')?'bouncer':(t.includes('cafe')||t.includes('pickle'))?'cafe':'unknown';
+    if (role === 'unknown') continue;
+    const hours = end ? (end - start) / 3600000 : 0;
+    const rate = RATES[role];
+    events.push({ title, start, end, role, hours, pay: hours * rate.hourly + rate.tips, tips: rate.tips });
+  }
+  return events;
 }
 
 function badge(role) {
-return ‘<span class="role-badge ' + role + '">’ + role.charAt(0).toUpperCase() + role.slice(1) + ‘</span>’;
+  return '<span class="role-badge ' + role + '">' + role.charAt(0).toUpperCase() + role.slice(1) + '</span>';
 }
 
 function changeBadge(current, previous, small) {
-if (!previous) return ‘’;
-const pct = ((current - previous) / previous * 100).toFixed(1);
-const cls = pct > 0 ? ‘up’ : pct < 0 ? ‘down’ : ‘flat’;
-const arrow = pct > 0 ? ‘▲’ : pct < 0 ? ‘▼’ : ‘—’;
-if (small) return ‘<div class="log-change ' + cls + '">’ + arrow + ’ ’ + Math.abs(pct) + ‘%</div>’;
-return ‘<span class="change-badge ' + cls + '">’ + arrow + ’ ’ + Math.abs(pct) + ‘%</span>’;
+  if (!previous) return '';
+  const pct = ((current - previous) / previous * 100).toFixed(1);
+  const cls = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+  const arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '—';
+  if (small) return '<div class="log-change ' + cls + '">' + arrow + ' ' + Math.abs(pct) + '%</div>';
+  return '<span class="change-badge ' + cls + '">' + arrow + ' ' + Math.abs(pct) + '%</span>';
 }
 
 function toggleMonth(id) {
-const body = document.getElementById(‘body-’ + id);
-const arrow = document.getElementById(‘arrow-’ + id);
-body.classList.toggle(‘open’);
-arrow.classList.toggle(‘open’);
+  const body = document.getElementById('body-' + id);
+  const arrow = document.getElementById('arrow-' + id);
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
 }
 
 function renderLog() {
-const {index: currentIndex} = getPayPeriod(0);
-// Collect all past periods (not current)
-const periods = [];
-for (let i = currentIndex - 1; i >= 0; i–) {
-const offset = i - currentIndex;
-const {start, end} = getPayPeriod(offset);
-const shifts = getShiftsForPeriod(offset);
-if (!shifts.length) continue;
-const total = shifts.reduce((s,x) => s + x.pay, 0);
-const hours = shifts.reduce((s,x) => s + x.hours, 0);
-const prevShifts = getShiftsForPeriod(offset - 1);
-const prevTotal = prevShifts.reduce((s,x) => s + x.pay, 0);
-periods.push({ start, end, total, hours, shifts: shifts.length, prevTotal, key: monthKey(start) });
-}
+  const {index: currentIndex} = getPayPeriod(0);
+  // Collect all past periods (not current)
+  const periods = [];
+  for (let i = currentIndex - 1; i >= 0; i--) {
+    const offset = i - currentIndex;
+    const {start, end} = getPayPeriod(offset);
+    const shifts = getShiftsForPeriod(offset);
+    if (!shifts.length) continue;
+    const total = shifts.reduce((s,x) => s + x.pay, 0);
+    const hours = shifts.reduce((s,x) => s + x.hours, 0);
+    const prevShifts = getShiftsForPeriod(offset - 1);
+    const prevTotal = prevShifts.reduce((s,x) => s + x.pay, 0);
+    periods.push({ start, end, total, hours, shifts: shifts.length, prevTotal, key: monthKey(start) });
+  }
 
-if (!periods.length) {
-document.getElementById(‘log-section’).innerHTML =
-‘<div class="section-title" style="margin-top:8px;">Pay Period Log</div>’ +
-‘<div class="empty-log">No previous periods yet — check back next pay period!</div>’;
-return;
-}
+  if (!periods.length) {
+    document.getElementById('log-section').innerHTML =
+      '<div class="section-title" style="margin-top:8px;">Pay Period Log</div>' +
+      '<div class="empty-log">No previous periods yet — check back next pay period!</div>';
+    return;
+  }
 
-// Group by month
-const months = {};
-periods.forEach(p => {
-if (!months[p.key]) months[p.key] = { periods: [], total: 0, hours: 0 };
-months[p.key].periods.push(p);
-months[p.key].total += p.total;
-months[p.key].hours += p.hours;
-});
+  // Group by month
+  const months = {};
+  periods.forEach(p => {
+    if (!months[p.key]) months[p.key] = { periods: [], total: 0, hours: 0 };
+    months[p.key].periods.push(p);
+    months[p.key].total += p.total;
+    months[p.key].hours += p.hours;
+  });
 
-let html = ‘<div class="section-title" style="margin-top:8px;">Pay Period Log</div>’;
-let monthIdx = 0;
-for (const [monthName, data] of Object.entries(months)) {
-const id = ‘month’ + monthIdx++;
-const isFirst = monthIdx === 1;
-html += ‘<div class="month-folder">’ +
-‘<div class="month-header" onclick="toggleMonth(\'' + id + '\')">’ +
-‘<div><div class="month-name">’ + monthName + ‘</div>’ +
-‘<div class="month-meta">$’ + data.total.toFixed(2) + ’ · ’ + data.hours.toFixed(2) + ’ hrs · ’ + data.periods.length + ’ period’ + (data.periods.length > 1 ? ‘s’ : ‘’) + ‘</div></div>’ +
-‘<span class="month-arrow' + (isFirst ? ' open' : '') + '" id="arrow-' + id + '">▶</span>’ +
-‘</div>’ +
-‘<div class="month-body' + (isFirst ? ' open' : '') + '" id="body-' + id + '">’;
-data.periods.forEach(p => {
-const label = formatDate(p.start) + ’ – ’ + formatDate(p.end);
-const change = changeBadge(p.total, p.prevTotal, true);
-html += ‘<div class="log-card">’ +
-‘<div><div class="log-period">’ + label + ‘</div>’ +
-‘<div class="log-sub">’ + p.hours.toFixed(2) + ’ hrs · ’ + p.shifts + ’ shift’ + (p.shifts > 1 ? ‘s’ : ‘’) + ‘</div></div>’ +
-‘<div class="log-right"><div class="log-pay">$’ + p.total.toFixed(2) + ‘</div>’ + change + ‘</div>’ +
-‘</div>’;
-});
-html += ‘</div></div>’;
-}
-document.getElementById(‘log-section’).innerHTML = html;
+  let html = '<div class="section-title" style="margin-top:8px;">Pay Period Log</div>';
+  let monthIdx = 0;
+  for (const [monthName, data] of Object.entries(months)) {
+    const id = 'month' + monthIdx++;
+    const isFirst = monthIdx === 1;
+    html += '<div class="month-folder">' +
+      '<div class="month-header" onclick="toggleMonth('' + id + '')">' +
+      '<div><div class="month-name">' + monthName + '</div>' +
+      '<div class="month-meta">$' + data.total.toFixed(2) + ' · ' + data.hours.toFixed(2) + ' hrs · ' + data.periods.length + ' period' + (data.periods.length > 1 ? 's' : '') + '</div></div>' +
+      '<span class="month-arrow' + (isFirst ? ' open' : '') + '" id="arrow-' + id + '">▶</span>' +
+      '</div>' +
+      '<div class="month-body' + (isFirst ? ' open' : '') + '" id="body-' + id + '">';
+    data.periods.forEach(p => {
+      const label = formatDate(p.start) + ' – ' + formatDate(p.end);
+      const change = changeBadge(p.total, p.prevTotal, true);
+      html += '<div class="log-card">' +
+        '<div><div class="log-period">' + label + '</div>' +
+        '<div class="log-sub">' + p.hours.toFixed(2) + ' hrs · ' + p.shifts + ' shift' + (p.shifts > 1 ? 's' : '') + '</div></div>' +
+        '<div class="log-right"><div class="log-pay">$' + p.total.toFixed(2) + '</div>' + change + '</div>' +
+        '</div>';
+    });
+    html += '</div></div>';
+  }
+  document.getElementById('log-section').innerHTML = html;
 }
 
 function render() {
-const {start, end} = getPayPeriod(periodOffset);
-document.getElementById(‘periodLabel’).textContent = formatDate(start) + ’ – ’ + formatDate(end);
-const shifts = getShiftsForPeriod(periodOffset).sort((a,b) => a.start - b.start);
-if (!shifts.length) { document.getElementById(‘content’).innerHTML = ‘<div class="loading">No shifts found.</div>’; renderLog(); return; }
-let th=0, tp=0, ch=0, bh=0, fh=0, cp=0, bp=0, fp=0, tips=0;
-shifts.forEach(s => {
-th+=s.hours; tp+=s.pay;
-if(s.role===‘cashier’){ch+=s.hours;cp+=s.pay;}
-if(s.role===‘bouncer’){bh+=s.hours;bp+=s.pay;}
-if(s.role===‘cafe’){fh+=s.hours;fp+=s.pay;tips+=s.tips;}
-});
-const tax = calcTax(tp);
-const prevShifts = getShiftsForPeriod(periodOffset - 1);
-const prevTotal = prevShifts.reduce((s,x) => s + x.pay, 0);
-const change = changeBadge(tp, prevTotal, false);
-const cards = shifts.map((s,i) =>
-‘<div class="shift-card" style="animation-delay:'+(i*0.05)+'s">’+
-‘<div><div class="shift-role">’+badge(s.role)+’ ‘+s.role.charAt(0).toUpperCase()+s.role.slice(1)+’</div>’+
-‘<div class="shift-date">’+s.start.toLocaleDateString(‘en-US’,{weekday:‘short’,month:‘short’,day:‘numeric’})+
-’ · ‘+s.start.toLocaleTimeString(‘en-US’,{hour:‘numeric’,minute:‘2-digit’})+
-’ – ‘+(s.end?s.end.toLocaleTimeString(‘en-US’,{hour:‘numeric’,minute:‘2-digit’}):’?’)+’</div></div>’+
-‘<div class="shift-right"><div class="shift-pay">$’+s.pay.toFixed(2)+’</div>’+
-‘<div class="shift-hours">’+s.hours.toFixed(2)+’ hrs’+(s.tips?’ + $’+s.tips+’ tips’:’’)+’</div></div></div>’
-).join(’’);
-document.getElementById(‘content’).innerHTML =
-‘<div class="totals-grid">’+
-‘<div class="total-card highlight"><div class="total-label">Gross Income</div><div class="total-value">$’+tp.toFixed(2)+change+’</div><div class="total-sub">’+th.toFixed(2)+’ hrs · ‘+shifts.length+’ shifts</div></div>’+
-‘<div class="total-card"><div class="total-label">Hours</div><div class="total-value">’+th.toFixed(2)+’</div><div class="total-sub">this period</div></div>’+
-‘<div class="total-card"><div class="total-label">Est. Tips</div><div class="total-value">$’+tips+’</div><div class="total-sub">cafe shifts</div></div>’+
-‘</div>’+
-‘<div class="section-title">Shifts</div><div class="shifts-list">’+cards+’</div>’+
-‘<div class="section-title">By Role</div>’+
-‘<div class="breakdown">’+
-(ch>0?’<div class="breakdown-row"><span class="label">Cashier</span><span class="val">’+ch.toFixed(2)+’ hrs · $’+cp.toFixed(2)+’</span></div>’:’’)+
-(bh>0?’<div class="breakdown-row"><span class="label">Bouncer</span><span class="val">’+bh.toFixed(2)+’ hrs · $’+bp.toFixed(2)+’</span></div>’:’’)+
-(fh>0?’<div class="breakdown-row"><span class="label">Cafe</span><span class="val">’+fh.toFixed(2)+’ hrs · $’+fp.toFixed(2)+’ <span class="tip-note">(incl. tips)</span></span></div>’:’’)+
-‘<div class="breakdown-row"><span class="label">Total</span><span class="val">’+th.toFixed(2)+’ hrs · $’+tp.toFixed(2)+’</span></div>’+
-‘</div>’+
-‘<div class="section-title">After Taxes · Oregon · Single</div>’+
-‘<div class="tax-highlight"><div class="total-label">Estimated Take-Home</div><div class="total-value">$’+tax.net.toFixed(2)+’</div><div class="total-sub">after all deductions this period</div></div>’+
-‘<div class="tax-breakdown">’+
-‘<div class="tax-row"><span class="label">Social Security (6.2%)</span><span class="val">-$’+tax.ss.toFixed(2)+’</span></div>’+
-‘<div class="tax-row"><span class="label">Medicare (1.45%)</span><span class="val">-$’+tax.medicare.toFixed(2)+’</span></div>’+
-‘<div class="tax-row"><span class="label">Federal Income Tax</span><span class="val">-$’+tax.federal.toFixed(2)+’</span></div>’+
-‘<div class="tax-row"><span class="label">Oregon State Tax</span><span class="val">-$’+tax.oregon.toFixed(2)+’</span></div>’+
-‘<div class="tax-row"><span class="label" style="color:#fff">Total Withheld</span><span class="val" style="color:#f87171">-$’+tax.total.toFixed(2)+’</span></div>’+
-‘</div>’+
-‘<div class="tax-note">* Estimates based on 2026 rates, single filer. Actual withholding may vary.</div>’;
-renderLog();
+  const {start, end} = getPayPeriod(periodOffset);
+  document.getElementById('periodLabel').textContent = formatDate(start) + ' – ' + formatDate(end);
+  const shifts = getShiftsForPeriod(periodOffset).sort((a,b) => a.start - b.start);
+  if (!shifts.length) { document.getElementById('content').innerHTML = '<div class="loading">No shifts found.</div>'; renderLog(); return; }
+  let th=0, tp=0, ch=0, bh=0, fh=0, cp=0, bp=0, fp=0, tips=0;
+  shifts.forEach(s => {
+    th+=s.hours; tp+=s.pay;
+    if(s.role==='cashier'){ch+=s.hours;cp+=s.pay;}
+    if(s.role==='bouncer'){bh+=s.hours;bp+=s.pay;}
+    if(s.role==='cafe'){fh+=s.hours;fp+=s.pay;tips+=s.tips;}
+  });
+  const tax = calcTax(tp);
+  const prevShifts = getShiftsForPeriod(periodOffset - 1);
+  const prevTotal = prevShifts.reduce((s,x) => s + x.pay, 0);
+  const change = changeBadge(tp, prevTotal, false);
+  const cards = shifts.map((s,i) =>
+    '<div class="shift-card" style="animation-delay:'+(i*0.05)+'s">'+
+    '<div><div class="shift-role">'+badge(s.role)+' '+s.role.charAt(0).toUpperCase()+s.role.slice(1)+'</div>'+
+    '<div class="shift-date">'+s.start.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+
+    ' · '+s.start.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+
+    ' – '+(s.end?s.end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'?')+'</div></div>'+
+    '<div class="shift-right"><div class="shift-pay">$'+s.pay.toFixed(2)+'</div>'+
+    '<div class="shift-hours">'+s.hours.toFixed(2)+' hrs'+(s.tips?' + $'+s.tips+' tips':'')+'</div></div></div>'
+  ).join('');
+  document.getElementById('content').innerHTML =
+    '<div class="totals-grid">'+
+    '<div class="total-card highlight"><div class="total-label">Gross Income</div><div class="total-value">$'+tp.toFixed(2)+change+'</div><div class="total-sub">'+th.toFixed(2)+' hrs · '+shifts.length+' shifts</div></div>'+
+    '<div class="total-card"><div class="total-label">Hours</div><div class="total-value">'+th.toFixed(2)+'</div><div class="total-sub">this period</div></div>'+
+    '<div class="total-card"><div class="total-label">Est. Tips</div><div class="total-value">$'+tips+'</div><div class="total-sub">cafe shifts</div></div>'+
+    '</div>'+
+    '<div class="section-title">Shifts</div><div class="shifts-list">'+cards+'</div>'+
+    '<div class="section-title">By Role</div>'+
+    '<div class="breakdown">'+
+    (ch>0?'<div class="breakdown-row"><span class="label">Cashier</span><span class="val">'+ch.toFixed(2)+' hrs · $'+cp.toFixed(2)+'</span></div>':'')+
+    (bh>0?'<div class="breakdown-row"><span class="label">Bouncer</span><span class="val">'+bh.toFixed(2)+' hrs · $'+bp.toFixed(2)+'</span></div>':'')+
+    (fh>0?'<div class="breakdown-row"><span class="label">Cafe</span><span class="val">'+fh.toFixed(2)+' hrs · $'+fp.toFixed(2)+' <span class="tip-note">(incl. tips)</span></span></div>':'')+
+    '<div class="breakdown-row"><span class="label">Total</span><span class="val">'+th.toFixed(2)+' hrs · $'+tp.toFixed(2)+'</span></div>'+
+    '</div>'+
+    '<div class="section-title">After Taxes · Oregon · Single</div>'+
+    '<div class="tax-highlight"><div class="total-label">Estimated Take-Home</div><div class="total-value">$'+tax.net.toFixed(2)+'</div><div class="total-sub">after all deductions this period</div></div>'+
+    '<div class="tax-breakdown">'+
+    '<div class="tax-row"><span class="label">Social Security (6.2%)</span><span class="val">-$'+tax.ss.toFixed(2)+'</span></div>'+
+    '<div class="tax-row"><span class="label">Medicare (1.45%)</span><span class="val">-$'+tax.medicare.toFixed(2)+'</span></div>'+
+    '<div class="tax-row"><span class="label">Federal Income Tax</span><span class="val">-$'+tax.federal.toFixed(2)+'</span></div>'+
+    '<div class="tax-row"><span class="label">Oregon State Tax</span><span class="val">-$'+tax.oregon.toFixed(2)+'</span></div>'+
+    '<div class="tax-row"><span class="label" style="color:#fff">Total Withheld</span><span class="val" style="color:#f87171">-$'+tax.total.toFixed(2)+'</span></div>'+
+    '</div>'+
+    '<div class="tax-note">* Estimates based on 2026 rates, single filer. Actual withholding may vary.</div>';
+  renderLog();
 }
 
 async function loadShifts() {
-document.getElementById(‘content’).innerHTML = ‘<div class="loading"><span class="dot-anim">Syncing shifts</span></div>’;
-document.getElementById(‘log-section’).innerHTML = ‘’;
-document.getElementById(‘status’).textContent = ‘’;
-let lastError = null;
-for (const url of PROXIES) {
-try {
-const res = await fetch(url, {signal: AbortSignal.timeout(8000)});
-if (!res.ok) throw new Error(’HTTP ’ + res.status);
-const text = await res.text();
-if (!text.includes(‘BEGIN:VCALENDAR’)) throw new Error(‘Invalid iCal data’);
-allShifts = parseICS(text);
-render();
-document.getElementById(‘status’).textContent = ’Last synced: ’ + new Date().toLocaleTimeString();
-return;
-} catch(err) { lastError = err; }
-}
-document.getElementById(‘content’).innerHTML = ‘<div class="error">⚠ Could not load shifts.<br><br>Check your connection and try refreshing.<br><br>Error: ‘+lastError?.message+’</div>’;
+  document.getElementById('content').innerHTML = '<div class="loading"><span class="dot-anim">Syncing shifts</span></div>';
+  document.getElementById('log-section').innerHTML = '';
+  document.getElementById('status').textContent = '';
+  let lastError = null;
+  for (const url of PROXIES) {
+    try {
+      const res = await fetch(url, {signal: AbortSignal.timeout(8000)});
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = await res.text();
+      if (!text.includes('BEGIN:VCALENDAR')) throw new Error('Invalid iCal data');
+      allShifts = parseICS(text);
+      render();
+      document.getElementById('status').textContent = 'Last synced: ' + new Date().toLocaleTimeString();
+      return;
+    } catch(err) { lastError = err; }
+  }
+  document.getElementById('content').innerHTML = '<div class="error">⚠ Could not load shifts.<br><br>Check your connection and try refreshing.<br><br>Error: '+lastError?.message+'</div>';
 }
 
 function selectPeriod(offset) {
-periodOffset = offset;
-document.querySelectorAll(’.period-btn’).forEach((b,i) => b.classList.toggle(‘active’,[-1,0,1][i]===offset));
-if (allShifts.length > 0) render();
+  periodOffset = offset;
+  document.querySelectorAll('.period-btn').forEach((b,i) => b.classList.toggle('active',[-1,0,1][i]===offset));
+  if (allShifts.length > 0) render();
 }
 loadShifts();
 </script>
-
-</body>
-</html>`;
-
-document.getElementById(‘code’).textContent = code;
-
-function copyCode() {
-navigator.clipboard.writeText(code).then(() => {
-const btn = document.getElementById(‘btn’);
-btn.textContent = ‘✅ Copied!’;
-btn.classList.add(‘copied’);
-setTimeout(() => { btn.textContent = ‘📋 Tap to Copy Code’; btn.classList.remove(‘copied’); }, 3000);
-});
-}
-</script>
-
 </body>
 </html>
