@@ -99,7 +99,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v1.6.7</div>
+  <div class="version">v1.7.0</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -118,7 +118,7 @@
 <div class="status" id="status"></div>
 
 <script>
-const VERSION = 'v1.6.7';
+const VERSION = 'v1.7.0';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -142,7 +142,42 @@ const PROXIES = [
   }
 ];
 
-const RATES = {
+const CACHE_KEY = 'paysummary_shifts_v1';
+
+// ─── Cache helpers ─────────────────────────────────────────────────────────────
+function saveShiftsToCache(shifts) {
+  try {
+    const serialized = shifts.map(s => ({
+      ...s,
+      start: s.start.getTime(),
+      end: s.end ? s.end.getTime() : null
+    }));
+    localStorage.setItem(CACHE_KEY, JSON.stringify(serialized));
+  } catch(e) { console.warn('Cache save failed:', e); }
+}
+
+function loadShiftsFromCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return parsed.map(s => ({
+      ...s,
+      start: new Date(s.start),
+      end: s.end ? new Date(s.end) : null
+    }));
+  } catch(e) { return []; }
+}
+
+function mergeShifts(existing, incoming) {
+  // Merge by unique start time + role, keeping all unique shifts
+  const map = new Map();
+  [...existing, ...incoming].forEach(s => {
+    const key = s.start.getTime() + '_' + s.role;
+    map.set(key, s);
+  });
+  return Array.from(map.values()).sort((a, b) => a.start - b.start);
+}
   cashier: { hourly: 16, tips: 0 },
   bouncer: { hourly: 16, tips: 0 },
   cafe:    { hourly: 15.05, tips: 30 }
@@ -462,11 +497,22 @@ async function loadShifts() {
   document.getElementById('log-section').innerHTML = '';
   document.getElementById('status').textContent = '';
 
+  // Load cached shifts first and render immediately
+  const cached = loadShiftsFromCache();
+  if (cached.length > 0) {
+    allShifts = cached;
+    render();
+    document.getElementById('status').textContent = VERSION + ' · Showing cached data, syncing...';
+  }
+
+  // Then fetch fresh data and merge
   const errors = [];
   for (let i = 0; i < PROXIES.length; i++) {
     try {
       const text = await tryFetch(PROXIES[i], i);
-      allShifts = parseICS(text);
+      const fresh = parseICS(text);
+      allShifts = mergeShifts(cached, fresh);
+      saveShiftsToCache(allShifts);
       render();
       document.getElementById('status').textContent =
         VERSION + ' · Synced ' + new Date().toLocaleTimeString() + ' via ' + PROXIES[i].name;
@@ -476,13 +522,19 @@ async function loadShifts() {
     }
   }
 
-  document.getElementById('content').innerHTML =
-    '<div class="error">' +
-    '⚠ Could not load shifts.<br><br>' +
-    errors.map(e => '• ' + e).join('<br>') +
-    '<br><br>Tap Refresh to try again.' +
-    '</div>';
-  document.getElementById('log-section').innerHTML = '';
+  // All proxies failed — show error but keep cached data visible
+  if (cached.length > 0) {
+    document.getElementById('status').textContent =
+      VERSION + ' · Showing cached data (sync failed)';
+  } else {
+    document.getElementById('content').innerHTML =
+      '<div class="error">' +
+      '⚠ Could not load shifts.<br><br>' +
+      errors.map(e => '• ' + e).join('<br>') +
+      '<br><br>Tap Refresh to try again.' +
+      '</div>';
+    document.getElementById('log-section').innerHTML = '';
+  }
 }
 
 function selectPeriod(offset) {
