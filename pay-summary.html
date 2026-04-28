@@ -99,7 +99,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v1.6.3</div>
+  <div class="version">v1.6.4</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -118,7 +118,7 @@
 <div class="status" id="status"></div>
 
 <script>
-const VERSION = 'v1.6.3';
+const VERSION = 'v1.6.4';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -166,6 +166,12 @@ function calcTax(gross) {
 }
 
 // ─── Pay period helpers ────────────────────────────────────────────────────────
+function pacificDate(utcDate) {
+  // Returns the Pacific calendar date as a comparable number YYYYMMDD
+  const pac = new Date(utcDate.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  return pac.getFullYear() * 10000 + (pac.getMonth() + 1) * 100 + pac.getDate();
+}
+
 function getPayPeriod(offset = 0) {
   const anchor = new Date(2026, 3, 20, 0, 0, 0); // Apr 20 2026 local midnight
   const msPerPeriod = 14 * 86400000;
@@ -174,12 +180,18 @@ function getPayPeriod(offset = 0) {
   const periodIndex = Math.floor((today - anchor) / msPerPeriod) + offset;
   const start = new Date(anchor.getTime() + periodIndex * msPerPeriod);
   const end = new Date(start.getTime() + 14 * 86400000);
-  return { start, end, index: periodIndex };
+  // Convert to YYYYMMDD numbers for comparison
+  const startNum = start.getFullYear() * 10000 + (start.getMonth() + 1) * 100 + start.getDate();
+  const endNum = end.getFullYear() * 10000 + (end.getMonth() + 1) * 100 + end.getDate();
+  return { start, end, startNum, endNum, index: periodIndex };
 }
 
 function getShiftsForPeriod(offset) {
-  const { start, end } = getPayPeriod(offset);
-  return allShifts.filter(s => s.start >= start && s.start < end);
+  const { startNum, endNum } = getPayPeriod(offset);
+  return allShifts.filter(s => {
+    const d = pacificDate(s.start);
+    return d >= startNum && d < endNum;
+  });
 }
 
 function formatDate(d) {
