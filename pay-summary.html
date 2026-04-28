@@ -99,7 +99,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v1.6.5</div>
+  <div class="version">v1.6.6</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -118,7 +118,7 @@
 <div class="status" id="status"></div>
 
 <script>
-const VERSION = 'v1.6.5';
+const VERSION = 'v1.6.6';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -177,13 +177,13 @@ function getPayPeriod(offset = 0) {
   const msPerPeriod = 14 * 86400000;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const periodIndex = Math.floor((today - anchor) / msPerPeriod) + offset;
-  const start = new Date(anchor.getTime() + periodIndex * msPerPeriod);
+  const diff = today - anchor;
+  const periodIndex = diff < 0 ? Math.ceil(diff / msPerPeriod) : Math.floor(diff / msPerPeriod);
+  const start = new Date(anchor.getTime() + (periodIndex + offset) * msPerPeriod);
   const end = new Date(start.getTime() + 14 * 86400000);
-  // Convert to YYYYMMDD numbers for comparison
   const startNum = start.getFullYear() * 10000 + (start.getMonth() + 1) * 100 + start.getDate();
   const endNum = end.getFullYear() * 10000 + (end.getMonth() + 1) * 100 + end.getDate();
-  return { start, end, startNum, endNum, index: periodIndex };
+  return { start, end, startNum, endNum, index: periodIndex + offset };
 }
 
 function getShiftsForPeriod(offset) {
