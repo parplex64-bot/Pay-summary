@@ -99,7 +99,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v1.7.0</div>
+  <div class="version">v1.8.0</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -118,28 +118,16 @@
 <div class="status" id="status"></div>
 
 <script>
-const VERSION = 'v1.7.0';
+const VERSION = 'v1.8.0';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
-// Multiple proxy strategies
+const WORKER_URL = 'https://dry-mouse-7189.gavinzweers08.workers.dev/';
+
 const PROXIES = [
-  {
-    name: 'corsproxy.io',
-    url: () => 'https://corsproxy.io/?' + encodeURIComponent(ICAL_SOURCE)
-  },
-  {
-    name: 'allorigins',
-    url: () => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(ICAL_SOURCE)
-  },
-  {
-    name: 'htmldriven',
-    url: () => 'https://cors.eu.org/' + ICAL_SOURCE
-  },
-  {
-    name: 'thingproxy',
-    url: () => 'https://thingproxy.freeboard.io/fetch/' + ICAL_SOURCE
-  }
+  { name: 'cloudflare-worker', url: () => WORKER_URL },
+  { name: 'corsproxy.io', url: () => 'https://corsproxy.io/?' + encodeURIComponent(ICAL_SOURCE) },
+  { name: 'allorigins', url: () => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(ICAL_SOURCE) },
 ];
 
 const CACHE_KEY = 'paysummary_shifts_v1';
