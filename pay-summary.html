@@ -212,11 +212,11 @@ function parseICS(text) {
       if (!s) return null;
       const c = s.replace(/[TZ]/g, '');
       if (c.length >= 12) {
-        // Parse directly as local time — When I Work stores in local time
-        return new Date(
+        // Data is in UTC — convert to Pacific for correct date bucketing
+        return new Date(Date.UTC(
           +c.slice(0,4), +c.slice(4,6)-1, +c.slice(6,8),
           +c.slice(8,10), +c.slice(10,12)
-        );
+        ));
       }
       return new Date(s);
     };
@@ -436,14 +436,6 @@ async function tryFetch(proxy, index) {
     throw e;
   }
 }
-window._debugShifts = () => {
-  const {start, end} = getPayPeriod(1);
-  console.log('Period:', start, end);
-  allShifts.forEach(s => {
-    if (s.start.getMonth() === 4) // May
-      console.log(s.start.toLocaleDateString(), s.role, s.start >= start, s.start < end);
-  });
-};
 
 async function loadShifts() {
   document.getElementById('content').innerHTML =
