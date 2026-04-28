@@ -99,7 +99,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v1.6.4</div>
+  <div class="version">v1.6.5</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -118,7 +118,7 @@
 <div class="status" id="status"></div>
 
 <script>
-const VERSION = 'v1.6.4';
+const VERSION = 'v1.6.5';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -189,8 +189,16 @@ function getPayPeriod(offset = 0) {
 function getShiftsForPeriod(offset) {
   const { startNum, endNum } = getPayPeriod(offset);
   return allShifts.filter(s => {
-    const d = pacificDate(s.start);
-    return d >= startNum && d < endNum;
+    // Check Pacific date first
+    const pacD = pacificDate(s.start);
+    if (pacD >= startNum && pacD < endNum) return true;
+    // Also check UTC date as fallback (handles timezone edge cases)
+    const utcD = s.start.getUTCFullYear() * 10000 + (s.start.getUTCMonth() + 1) * 100 + s.start.getUTCDate();
+    if (utcD >= startNum && utcD < endNum) return true;
+    // Also check local date as fallback
+    const locD = s.start.getFullYear() * 10000 + (s.start.getMonth() + 1) * 100 + s.start.getDate();
+    if (locD >= startNum && locD < endNum) return true;
+    return false;
   });
 }
 
