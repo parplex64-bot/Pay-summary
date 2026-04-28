@@ -99,7 +99,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v1.6.2</div>
+  <div class="version">v1.6.3</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -118,7 +118,7 @@
 <div class="status" id="status"></div>
 
 <script>
-const VERSION = 'v1.6.2';
+const VERSION = 'v1.6.3';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -167,11 +167,13 @@ function calcTax(gross) {
 
 // ─── Pay period helpers ────────────────────────────────────────────────────────
 function getPayPeriod(offset = 0) {
-  const anchor = new Date(2026, 3, 20); // Apr 20 2026
+  const anchor = new Date(2026, 3, 20, 0, 0, 0); // Apr 20 2026 local midnight
   const msPerPeriod = 14 * 86400000;
-  const periodIndex = Math.floor((new Date() - anchor) / msPerPeriod) + offset;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const periodIndex = Math.floor((today - anchor) / msPerPeriod) + offset;
   const start = new Date(anchor.getTime() + periodIndex * msPerPeriod);
-  const end = new Date(start.getTime() + 14 * 86400000); // exclusive end (start of next period)
+  const end = new Date(start.getTime() + 14 * 86400000);
   return { start, end, index: periodIndex };
 }
 
@@ -210,15 +212,11 @@ function parseICS(text) {
       if (!s) return null;
       const c = s.replace(/[TZ]/g, '');
       if (c.length >= 12) {
-        // Parse as UTC then adjust to Pacific (UTC-7 PDT / UTC-8 PST)
-        const utc = new Date(Date.UTC(
+        // Parse directly as local time — When I Work stores in local time
+        return new Date(
           +c.slice(0,4), +c.slice(4,6)-1, +c.slice(6,8),
           +c.slice(8,10), +c.slice(10,12)
-        ));
-        // Determine Pacific offset: PDT (UTC-7) Mar-Nov, PST (UTC-8) otherwise
-        const month = utc.getUTCMonth();
-        const pacificOffset = (month >= 2 && month <= 10) ? 7 : 8;
-        return new Date(utc.getTime() - pacificOffset * 3600000);
+        );
       }
       return new Date(s);
     };
