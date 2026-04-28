@@ -99,7 +99,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v1.6.6</div>
+  <div class="version">v1.6.7</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -118,7 +118,7 @@
 <div class="status" id="status"></div>
 
 <script>
-const VERSION = 'v1.6.6';
+const VERSION = 'v1.6.7';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -188,17 +188,15 @@ function getPayPeriod(offset = 0) {
 
 function getShiftsForPeriod(offset) {
   const { startNum, endNum } = getPayPeriod(offset);
+  // endNum is exclusive (start of next period), but we add 1 day buffer for safety
+  const endNumBuffer = endNum + 1;
   return allShifts.filter(s => {
-    // Check Pacific date first
-    const pacD = pacificDate(s.start);
-    if (pacD >= startNum && pacD < endNum) return true;
-    // Also check UTC date as fallback (handles timezone edge cases)
-    const utcD = s.start.getUTCFullYear() * 10000 + (s.start.getUTCMonth() + 1) * 100 + s.start.getUTCDate();
-    if (utcD >= startNum && utcD < endNum) return true;
-    // Also check local date as fallback
-    const locD = s.start.getFullYear() * 10000 + (s.start.getMonth() + 1) * 100 + s.start.getDate();
-    if (locD >= startNum && locD < endNum) return true;
-    return false;
+    const checks = [
+      pacificDate(s.start),
+      s.start.getUTCFullYear() * 10000 + (s.start.getUTCMonth() + 1) * 100 + s.start.getUTCDate(),
+      s.start.getFullYear() * 10000 + (s.start.getMonth() + 1) * 100 + s.start.getDate(),
+    ];
+    return checks.some(d => d >= startNum && d < endNumBuffer);
   });
 }
 
@@ -245,7 +243,7 @@ function parseICS(text) {
     const t = title.toLowerCase();
     let role = t.includes('cashier') ? 'cashier'
       : t.includes('bouncer') ? 'bouncer'
-      : (t.includes('cafe') || t.includes('pickle')) ? 'cafe'
+      : (t.includes('cafe') || t.includes('pickle') || t.includes('jumping')) ? 'cafe'
       : 'unknown';
     if (role === 'unknown') continue;
     const hours = end ? (end - start) / 3600000 : 0;
