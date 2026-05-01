@@ -99,7 +99,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v1.9.3</div>
+  <div class="version">v2.0.0</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -118,7 +118,7 @@
 <div class="status" id="status"></div>
 
 <script>
-const VERSION = 'v1.9.3';
+const VERSION = 'v2.0.0';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -143,13 +143,13 @@ function saveShiftsToCache(shifts) {
       start: s.start.getTime(),
       end: s.end ? s.end.getTime() : null
     }));
-    localStorage.setItem(CACHE_KEY, JSON.stringify(serialized));
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(serialized));
   } catch(e) { console.warn('Cache save failed:', e); }
 }
 
 function loadShiftsFromCache() {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = sessionStorage.getItem(CACHE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return parsed.map(s => ({
