@@ -99,7 +99,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.0.0</div>
+  <div class="version">v2.0.1</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -118,7 +118,7 @@
 <div class="status" id="status"></div>
 
 <script>
-const VERSION = 'v2.0.0';
+const VERSION = 'v2.0.1';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -207,15 +207,13 @@ function getPayPeriod(offset = 0) {
 
 function getShiftsForPeriod(offset) {
   const { startNum, endNum } = getPayPeriod(offset);
-  // endNum is exclusive (start of next period), but we add 1 day buffer for safety
-  const endNumBuffer = endNum + 1;
   return allShifts.filter(s => {
     const checks = [
       pacificDate(s.start),
       s.start.getUTCFullYear() * 10000 + (s.start.getUTCMonth() + 1) * 100 + s.start.getUTCDate(),
       s.start.getFullYear() * 10000 + (s.start.getMonth() + 1) * 100 + s.start.getDate(),
     ];
-    return checks.some(d => d >= startNum && d < endNumBuffer);
+    return checks.some(d => d >= startNum && d < endNum);
   });
 }
 
