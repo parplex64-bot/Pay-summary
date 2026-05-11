@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -134,30 +133,42 @@ const RATES = {
   cafe:    { hourly: 15.05, tips: 30 }
 };
 
-const CACHE_KEY = 'paysummary_shifts_v2';
+const WORKER_URL = 'https://dry-mouse-7189.gavinzweers08.workers.dev';
 
-function saveShiftsToCache(shifts) {
+async function saveShiftsToCache(shifts) {
   try {
     const serialized = shifts.map(s => ({
       ...s,
       start: s.start.getTime(),
       end: s.end ? s.end.getTime() : null
     }));
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(serialized));
+    await fetch(WORKER_URL + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serialized)
+    });
   } catch(e) { console.warn('Cache save failed:', e); }
 }
 
-function loadShiftsFromCache() {
+async function loadShiftsFromCache() {
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
+    const resp = await fetch(WORKER_URL + '/load');
+    const parsed = await resp.json();
     return parsed.map(s => ({
       ...s,
       start: new Date(s.start),
       end: s.end ? new Date(s.end) : null
     }));
   } catch(e) { return []; }
+}
+
+function mergeShifts(existing, incoming) {
+  const map = new Map();
+  [...existing, ...incoming].forEach(s => {
+    const key = s.start.getTime() + '_' + s.role;
+    map.set(key, s);
+  });
+  return Array.from(map.values()).sort((a, b) => a.start - b.start);
 }
 
 function mergeShifts(existing, incoming) {
@@ -475,26 +486,26 @@ async function tryFetch(proxy, index) {
 async function loadShifts() {
   document.getElementById('content').innerHTML =
     '<div class="loading">Connecting to When I Work...' +
-    '<div class="loading-detail" id="loadingDetail">Starting up...</div></div>';
+    '<div class="loading-detail" id="loadingDetail">Loading saved shifts...</div></div>';
   document.getElementById('log-section').innerHTML = '';
   document.getElementById('status').textContent = '';
 
-  // Load cache immediately and render
-  const cached = loadShiftsFromCache();
+  // Load from KV cache first
+  const cached = await loadShiftsFromCache();
   if (cached.length > 0) {
     allShifts = cached;
     render();
     document.getElementById('status').textContent = VERSION + ' · Cached · Syncing...';
   }
 
-  // Fetch fresh and merge
+  // Fetch fresh from iCal and merge
   const errors = [];
   for (let i = 0; i < PROXIES.length; i++) {
     try {
       const text = await tryFetch(PROXIES[i], i);
       const fresh = parseICS(text);
       allShifts = mergeShifts(cached, fresh);
-      saveShiftsToCache(allShifts);
+      await saveShiftsToCache(allShifts);
       render();
       document.getElementById('status').textContent =
         VERSION + ' · Synced ' + new Date().toLocaleTimeString() + ' via ' + PROXIES[i].name;
@@ -532,6 +543,5 @@ function selectPeriod(offset) {
 
 loadShifts();
 </script>
-
 </body>
 </html>
