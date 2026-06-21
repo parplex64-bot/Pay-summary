@@ -117,8 +117,13 @@
   .adj-input-label { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; min-width: 90px; }
   .adj-input { flex: 1; background: #111; border: 1px solid var(--border); color: #fff; padding: 10px 12px; border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 14px; }
   .adj-input:focus { outline: none; border-color: #facc15; }
+  .adj-input.tip-input:focus { border-color: #4ade80; }
   .adj-clear-btn { background: none; border: none; color: #555; font-size: 11px; font-family: 'DM Mono', monospace; cursor: pointer; padding: 4px 8px; }
   .adj-clear-btn:active { color: #f87171; }
+
+  .timesheet-preview-wrap { margin-top: 10px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; position: relative; }
+  .timesheet-preview-img { width: 100%; max-height: 340px; object-fit: contain; background: #000; display: block; touch-action: pinch-zoom; }
+  .timesheet-preview-remove { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); border: 1px solid var(--border); color: #fff; width: 28px; height: 28px; border-radius: 50%; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
   .upload-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
   .upload-label { flex: 1; background: #111; border: 1px dashed var(--border); color: var(--muted); padding: 10px 12px; border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 11px; text-align: center; cursor: pointer; }
@@ -135,7 +140,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.3.0</div>
+  <div class="version">v2.4.0</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -164,6 +169,7 @@
       <label class="upload-label" id="timesheetUploadLabel" for="timesheetUploadInput">📷 Attach timesheet screenshot</label>
       <input type="file" accept="image/*" style="display:none" id="timesheetUploadInput" onchange="handleScreenshotUpload(this)">
     </div>
+    <div id="timesheetPreview"></div>
     <div id="adjustList" style="margin-top:14px;"></div>
     <button class="modal-save-btn" onclick="saveAllAdjustments()">Save Adjustments</button>
     <div class="modal-save-status" id="adjustSaveStatus"></div>
@@ -171,7 +177,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.3.0';
+const VERSION = 'v2.4.0';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -253,13 +259,17 @@ async function loadAdjustments() {
 function applyAdjustments(shifts) {
   return shifts.map(s => {
     const adj = allAdjustments[shiftKey(s)];
-    if (adj && typeof adj.actualHours === 'number') {
+    if (adj && (typeof adj.actualHours === 'number' || typeof adj.actualTips === 'number')) {
       const rate = RATES[s.role];
+      const hours = typeof adj.actualHours === 'number' ? adj.actualHours : s.hours;
+      const tips = typeof adj.actualTips === 'number' ? adj.actualTips : s.tips;
       return {
         ...s,
         scheduledHours: s.hours,
-        hours: adj.actualHours,
-        pay: adj.actualHours * rate.hourly + rate.tips,
+        scheduledTips: s.tips,
+        hours: hours,
+        tips: tips,
+        pay: hours * rate.hourly + tips,
         adjusted: true
       };
     }
@@ -477,9 +487,10 @@ function render() {
   let th=0,tp=0,ch=0,bh=0,fh=0,cp=0,bp=0,fp=0,tips=0;
   shifts.forEach(s => {
     th += s.hours; tp += s.pay;
+    tips += s.tips || 0;
     if (s.role === 'cashier') { ch += s.hours; cp += s.pay; }
     if (s.role === 'bouncer') { bh += s.hours; bp += s.pay; }
-    if (s.role === 'cafe')    { fh += s.hours; fp += s.pay; tips += s.tips; }
+    if (s.role === 'cafe')    { fh += s.hours; fp += s.pay; }
   });
 
   const tax = calcTax(tp);
@@ -519,7 +530,7 @@ function render() {
         '<div class="total-sub">this period</div>' +
       '</div>' +
       '<div class="total-card">' +
-        '<div class="total-label">Est. Tips</div>' +
+        '<div class="total-label">Tips</div>' +
         '<div class="total-value">$' + tips + '</div>' +
         '<div class="total-sub">cafe shifts</div>' +
       '</div>' +
@@ -649,6 +660,7 @@ function openAdjustModal() {
   uploadLabel.classList.remove('has-file');
   uploadLabel.textContent = '📷 Attach timesheet screenshot';
   document.getElementById('timesheetUploadInput').value = '';
+  document.getElementById('timesheetPreview').innerHTML = '';
 
   if (!shifts.length) {
     document.getElementById('adjustList').innerHTML =
@@ -659,6 +671,7 @@ function openAdjustModal() {
       const existing = allAdjustments[key];
       const scheduledHours = s.scheduledHours !== undefined ? s.scheduledHours : s.hours;
       const currentVal = existing && typeof existing.actualHours === 'number' ? formatHoursInput(existing.actualHours) : '';
+      const currentTip = existing && typeof existing.actualTips === 'number' ? String(existing.actualTips) : '';
       return (
         '<div class="adj-shift-row" data-key="' + key + '">' +
           '<div class="adj-shift-head">' +
@@ -672,6 +685,10 @@ function openAdjustModal() {
             '<span class="adj-input-label">Worked hrs</span>' +
             '<input class="adj-input" type="text" inputmode="numeric" placeholder="e.g. 830" value="' + currentVal + '" oninput="handleHoursInput(\'' + key + '\', this)">' +
             (existing ? '<button class="adj-clear-btn" onclick="clearAdjustment(\'' + key + '\')">Clear</button>' : '') +
+          '</div>' +
+          '<div class="adj-input-row">' +
+            '<span class="adj-input-label">Tips ($)</span>' +
+            '<input class="adj-input tip-input" type="number" inputmode="decimal" min="0" step="1" placeholder="e.g. 110" value="' + currentTip + '" oninput="handleTipInput(\'' + key + '\', this)">' +
           '</div>' +
         '</div>'
       );
@@ -712,9 +729,18 @@ function handleHoursInput(key, inputEl) {
 function stageAdjustment(key, value) {
   const num = parseFloat(value);
   if (!isNaN(num) && num >= 0) {
-    pendingAdjustments[key] = { actualHours: num };
+    pendingAdjustments[key] = { ...(pendingAdjustments[key] || {}), actualHours: num };
   } else {
-    delete pendingAdjustments[key];
+    if (pendingAdjustments[key]) delete pendingAdjustments[key].actualHours;
+  }
+}
+
+function handleTipInput(key, inputEl) {
+  const num = parseFloat(inputEl.value);
+  if (!isNaN(num) && num >= 0) {
+    pendingAdjustments[key] = { ...(pendingAdjustments[key] || {}), actualTips: num };
+  } else {
+    if (pendingAdjustments[key]) delete pendingAdjustments[key].actualTips;
   }
 }
 
@@ -734,8 +760,22 @@ function handleScreenshotUpload(input) {
     const label = document.getElementById('timesheetUploadLabel');
     label.classList.add('has-file');
     label.textContent = '✓ ' + file.name;
+    document.getElementById('timesheetPreview').innerHTML =
+      '<div class="timesheet-preview-wrap">' +
+        '<img class="timesheet-preview-img" src="' + e.target.result + '" alt="Timesheet">' +
+        '<button class="timesheet-preview-remove" onclick="removeScreenshotPreview()">✕</button>' +
+      '</div>';
   };
   reader.readAsDataURL(file);
+}
+
+function removeScreenshotPreview() {
+  pendingScreenshot = null;
+  document.getElementById('timesheetPreview').innerHTML = '';
+  document.getElementById('timesheetUploadInput').value = '';
+  const label = document.getElementById('timesheetUploadLabel');
+  label.classList.remove('has-file');
+  label.textContent = '📷 Attach timesheet screenshot';
 }
 
 async function saveAllAdjustments() {
@@ -747,11 +787,14 @@ async function saveAllAdjustments() {
     if (pendingAdjustments[key].__clear) {
       delete allAdjustments[key];
     } else {
-      allAdjustments[key] = {
-        ...(allAdjustments[key] || {}),
-        actualHours: pendingAdjustments[key].actualHours,
-        savedAt: Date.now()
-      };
+      const staged = pendingAdjustments[key];
+      const next = { ...(allAdjustments[key] || {}), savedAt: Date.now() };
+      if (typeof staged.actualHours === 'number') next.actualHours = staged.actualHours;
+      if (typeof staged.actualTips === 'number') next.actualTips = staged.actualTips;
+      // Only keep the adjustment if it actually has at least one real value
+      if (typeof next.actualHours === 'number' || typeof next.actualTips === 'number') {
+        allAdjustments[key] = next;
+      }
     }
   });
 
