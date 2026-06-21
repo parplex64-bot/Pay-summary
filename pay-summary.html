@@ -135,7 +135,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.2.0</div>
+  <div class="version">v2.3.0</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -160,14 +160,18 @@
     <div class="modal-handle"></div>
     <div class="modal-title">Adjust Worked Hours</div>
     <div class="modal-subtitle" id="adjustSubtitle">Enter actual hours worked for shifts this period</div>
-    <div id="adjustList"></div>
+    <div class="upload-row" style="margin-top:0;">
+      <label class="upload-label" id="timesheetUploadLabel" for="timesheetUploadInput">📷 Attach timesheet screenshot</label>
+      <input type="file" accept="image/*" style="display:none" id="timesheetUploadInput" onchange="handleScreenshotUpload(this)">
+    </div>
+    <div id="adjustList" style="margin-top:14px;"></div>
     <button class="modal-save-btn" onclick="saveAllAdjustments()">Save Adjustments</button>
     <div class="modal-save-status" id="adjustSaveStatus"></div>
   </div>
 </div>
 
 <script>
-const VERSION = 'v2.2.0';
+const VERSION = 'v2.3.0';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -631,7 +635,7 @@ function selectPeriod(offset) {
 
 // ─── Adjust Hours Modal ─────────────────────────────────────────────────────────
 let pendingAdjustments = {}; // staged edits before save
-let pendingScreenshots = {}; // shiftKey -> {name, dataUrl}
+let pendingScreenshot = null; // single { name, dataUrl } for this period
 
 function openAdjustModal() {
   const { start, end } = getPayPeriod(periodOffset);
@@ -639,17 +643,22 @@ function openAdjustModal() {
     formatDate(start) + ' – ' + periodEndDisplay(end) + ' · tap a field to adjust';
   const shifts = getShiftsForPeriod(periodOffset).sort((a, b) => a.start - b.start);
   pendingAdjustments = {};
-  pendingScreenshots = {};
+  pendingScreenshot = null;
+
+  const uploadLabel = document.getElementById('timesheetUploadLabel');
+  uploadLabel.classList.remove('has-file');
+  uploadLabel.textContent = '📷 Attach timesheet screenshot';
+  document.getElementById('timesheetUploadInput').value = '';
 
   if (!shifts.length) {
     document.getElementById('adjustList').innerHTML =
       '<div class="empty-log">No shifts in this period to adjust.</div>';
   } else {
-    document.getElementById('adjustList').innerHTML = shifts.map((s, i) => {
+    document.getElementById('adjustList').innerHTML = shifts.map((s) => {
       const key = shiftKey(s);
       const existing = allAdjustments[key];
       const scheduledHours = s.scheduledHours !== undefined ? s.scheduledHours : s.hours;
-      const currentVal = existing && typeof existing.actualHours === 'number' ? existing.actualHours : '';
+      const currentVal = existing && typeof existing.actualHours === 'number' ? formatHoursInput(existing.actualHours) : '';
       return (
         '<div class="adj-shift-row" data-key="' + key + '">' +
           '<div class="adj-shift-head">' +
@@ -661,22 +670,12 @@ function openAdjustModal() {
           '</div>' +
           '<div class="adj-input-row">' +
             '<span class="adj-input-label">Worked hrs</span>' +
-            '<input class="adj-input" type="number" step="0.05" min="0" max="24" placeholder="' + scheduledHours.toFixed(2) + '" value="' + currentVal + '" oninput="stageAdjustment(\'' + key + '\', this.value)">' +
+            '<input class="adj-input" type="text" inputmode="numeric" placeholder="e.g. 830" value="' + currentVal + '" oninput="handleHoursInput(\'' + key + '\', this)">' +
             (existing ? '<button class="adj-clear-btn" onclick="clearAdjustment(\'' + key + '\')">Clear</button>' : '') +
-          '</div>' +
-          '<div class="upload-row">' +
-            '<label class="upload-label" id="uploadLabel-' + i + '">📷 Attach timesheet screenshot</label>' +
-            '<input type="file" accept="image/*" capture="environment" style="display:none" id="uploadInput-' + i + '" onchange="handleScreenshotUpload(\'' + key + '\', ' + i + ', this)">' +
           '</div>' +
         '</div>'
       );
     }).join('');
-
-    // Wire up upload labels to file inputs (since onclick in template string gets messy with quotes)
-    shifts.forEach((s, i) => {
-      const label = document.getElementById('uploadLabel-' + i);
-      if (label) label.onclick = () => document.getElementById('uploadInput-' + i).click();
-    });
   }
 
   document.getElementById('adjustSaveStatus').textContent = '';
@@ -685,6 +684,29 @@ function openAdjustModal() {
 
 function closeAdjustModal() {
   document.getElementById('adjustModal').classList.remove('open');
+}
+
+// Auto-inserts a decimal point as the person types digits.
+// 3+ digits: decimal goes 2 from the end (830 -> 8.30, 1030 -> 10.30, 1230 -> 12.30)
+// 1-2 digits: left as-is so short values like "8" or "12" stay clean
+function formatHoursInput(num) {
+  return num % 1 === 0 ? String(num) : num.toFixed(2).replace(/0$/, '');
+}
+
+function handleHoursInput(key, inputEl) {
+  const raw = inputEl.value.replace(/[^\d.]/g, '');
+  // If user already typed a decimal point themselves, respect it as-is
+  if (raw.includes('.')) {
+    inputEl.value = raw;
+    stageAdjustment(key, raw);
+    return;
+  }
+  let formatted = raw;
+  if (raw.length >= 3) {
+    formatted = raw.slice(0, raw.length - 2) + '.' + raw.slice(-2);
+  }
+  inputEl.value = formatted;
+  stageAdjustment(key, formatted);
 }
 
 function stageAdjustment(key, value) {
@@ -703,17 +725,15 @@ function clearAdjustment(key) {
   saveAllAdjustments();
 }
 
-function handleScreenshotUpload(key, index, input) {
+function handleScreenshotUpload(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
-    pendingScreenshots[key] = { name: file.name, dataUrl: e.target.result };
-    const label = document.getElementById('uploadLabel-' + index);
-    if (label) {
-      label.classList.add('has-file');
-      label.textContent = '✓ ' + file.name;
-    }
+    pendingScreenshot = { name: file.name, dataUrl: e.target.result };
+    const label = document.getElementById('timesheetUploadLabel');
+    label.classList.add('has-file');
+    label.textContent = '✓ ' + file.name;
   };
   reader.readAsDataURL(file);
 }
@@ -735,13 +755,15 @@ async function saveAllAdjustments() {
     }
   });
 
-  // Attach screenshot references (stored as small note; full image kept in browser only this session)
-  Object.keys(pendingScreenshots).forEach(key => {
-    if (allAdjustments[key]) {
-      allAdjustments[key].hasScreenshot = true;
-      allAdjustments[key].screenshotName = pendingScreenshots[key].name;
-    }
-  });
+  // Attach the single screenshot reference to every adjusted shift this period
+  if (pendingScreenshot) {
+    Object.keys(pendingAdjustments).forEach(key => {
+      if (allAdjustments[key]) {
+        allAdjustments[key].hasScreenshot = true;
+        allAdjustments[key].screenshotName = pendingScreenshot.name;
+      }
+    });
+  }
 
   await saveAdjustments();
 
