@@ -940,7 +940,7 @@ async function saveAllAdjustments() {
   }, 600);
 }
 
-loadShifts();
+loadShifts().then(() => checkForRecentShift());
 </script>
 </body>
 </html>
