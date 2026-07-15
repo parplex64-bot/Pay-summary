@@ -42,6 +42,7 @@
   .role-badge.cashier { background: #0a2a0a; color: #4ade80; border: 1px solid #166534; }
   .role-badge.bouncer { background: #0a1a2a; color: #60a5fa; border: 1px solid #1d4ed8; }
   .role-badge.cafe { background: #222; color: #fff; border: 1px solid #555; }
+  .role-badge.other { background: #1a0a2a; color: #c084fc; border: 1px solid #7e22ce; }
   .shift-date { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 3px; }
   .shift-right { text-align: right; }
   .shift-pay { font-size: 15px; font-weight: 500; color: #fff; font-family: 'DM Mono', monospace; }
@@ -97,6 +98,8 @@
 
   .adjust-btn { width: 100%; background: #1a1a0a; border: 1px solid #854d0e; color: #facc15; padding: 14px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; margin-top: 8px; }
   .adjust-btn:hover { background: #2a2406; border-color: #facc15; }
+  .roles-btn { width: 100%; background: #0a1a2a; border: 1px solid #1d4ed8; color: #60a5fa; padding: 14px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; margin-top: 8px; }
+  .roles-btn:hover { background: #0d1f3a; border-color: #60a5fa; }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
   .modal-overlay.open { opacity: 1; pointer-events: auto; }
@@ -133,6 +136,16 @@
   .modal-save-btn { width: 100%; background: #facc15; border: none; color: #000; padding: 16px; border-radius: 12px; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; margin-top: 16px; }
   .modal-save-btn:active { background: #eab308; }
   .modal-save-status { text-align: center; font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 10px; min-height: 14px; }
+
+  .role-row { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; }
+  .role-row-name { font-size: 13px; font-weight: 600; color: #fff; }
+  .role-row-rate { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .role-delete-btn { background: none; border: none; color: #555; font-size: 14px; cursor: pointer; padding: 4px; }
+  .role-delete-btn:active { color: #f87171; }
+  .add-role-row { display: grid; grid-template-columns: 1fr 80px auto; gap: 8px; margin-top: 12px; }
+  .add-role-input { background: #111; border: 1px solid var(--border); color: #fff; padding: 10px 12px; border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 13px; }
+  .add-role-input:focus { outline: none; border-color: #60a5fa; }
+  .add-role-btn { background: #0a1a2a; border: 1px solid #1d4ed8; color: #60a5fa; padding: 10px; border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 12px; cursor: pointer; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -140,7 +153,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.4.1</div>
+  <div class="version">v2.5.0</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -157,7 +170,24 @@
 <div id="log-section"></div>
 <button class="refresh-btn" onclick="loadShifts()">↻ Refresh Shifts</button>
 <button class="adjust-btn" onclick="openAdjustModal()">✎ Adjust Worked Hours</button>
+<button class="roles-btn" onclick="openRolesModal()">⚙ Manage Roles & Pay</button>
 <div class="status" id="status"></div>
+
+<div class="modal-overlay" id="rolesModal">
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="closeRolesModal()">✕</button>
+    <div class="modal-handle"></div>
+    <div class="modal-title">Roles & Pay Rates</div>
+    <div class="modal-subtitle">Cafe is fixed. Add or remove any other role.</div>
+    <div id="rolesList"></div>
+    <div class="add-role-row">
+      <input class="add-role-input" id="newRoleName" placeholder="Role name" type="text">
+      <input class="add-role-input" id="newRoleRate" placeholder="$/hr" type="number" step="0.01" min="0">
+      <button class="add-role-btn" onclick="addRole()">+ Add</button>
+    </div>
+    <div class="modal-save-status" id="rolesSaveStatus"></div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="adjustModal">
   <div class="modal-sheet">
@@ -177,7 +207,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.4.1';
+const VERSION = 'v2.5.0';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -187,11 +217,34 @@ const PROXIES = [
   { name: 'allorigins', url: () => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(ICAL_SOURCE) },
 ];
 
-const RATES = {
-  cashier: { hourly: 18, tips: 0 },
-  bouncer: { hourly: 18, tips: 0 },
-  cafe:    { hourly: 15.05, tips: 30 }
+const DEFAULT_RATES = {
+  cashier:    { hourly: 18, tips: 0, label: 'Cashier' },
+  bouncer:    { hourly: 18, tips: 0, label: 'Bouncer' },
+  'shift-lead': { hourly: 18, tips: 0, label: 'Shift Lead' },
+  cafe:       { hourly: 15.05, tips: 30, label: 'Cafe' },
+  other:      { hourly: 18, tips: 0, label: 'Other' },
 };
+let RATES = { ...DEFAULT_RATES };
+
+async function loadRates() {
+  try {
+    const resp = await fetch(WORKER_URL + '/load-rates');
+    const data = await resp.json();
+    if (data && Object.keys(data).length > 0) {
+      RATES = { ...DEFAULT_RATES, ...data };
+    }
+  } catch(e) { RATES = { ...DEFAULT_RATES }; }
+}
+
+async function saveRates() {
+  try {
+    await fetch(WORKER_URL + '/save-rates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(RATES)
+    });
+  } catch(e) { console.warn('Rate save failed:', e); }
+}
 
 const WORKER_URL = 'https://dry-mouse-7189.gavinzweers08.workers.dev';
 
@@ -366,11 +419,19 @@ function parseICS(text) {
     const start = pd(dtstart), end = pd(dtend);
     if (!start) continue;
     const t = title.toLowerCase();
-    let role = t.includes('cashier') ? 'cashier'
-      : t.includes('bouncer') ? 'bouncer'
-      : (t.includes('cafe') || t.includes('pickle') || t.includes('jumping')) ? 'cafe'
-      : 'unknown';
-    if (role === 'unknown') continue;
+    // First check cafe
+    let role = (t.includes('cafe') || t.includes('pickle') || t.includes('jumping')) ? 'cafe' : null;
+    // Then check known RATES keys by label or key
+    if (!role) {
+      for (const [key, r] of Object.entries(RATES)) {
+        if (key === 'cafe' || key === 'other') continue;
+        if (t.includes(key) || t.includes(r.label.toLowerCase())) {
+          role = key;
+          break;
+        }
+      }
+    }
+    if (!role) role = 'other';
     const hours = end ? (end - start) / 3600000 : 0;
     const rate = RATES[role];
     events.push({ title, start, end, role, hours, pay: hours * rate.hourly + rate.tips, tips: rate.tips });
@@ -380,7 +441,9 @@ function parseICS(text) {
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
 function badge(role) {
-  return '<span class="role-badge ' + role + '">' + role.charAt(0).toUpperCase() + role.slice(1) + '</span>';
+  const label = (RATES[role] && RATES[role].label) ? RATES[role].label : role.charAt(0).toUpperCase() + role.slice(1);
+  const cls = ['cashier','bouncer','cafe'].includes(role) ? role : 'other';
+  return '<span class="role-badge ' + cls + '">' + label + '</span>';
 }
 
 function changeBadge(cur, prev, small) {
@@ -591,9 +654,12 @@ async function loadShifts() {
   document.getElementById('log-section').innerHTML = '';
   document.getElementById('status').textContent = '';
 
-  // Load from KV cache first
-  const cached = await loadShiftsFromCache();
+  // Load rates and adjustments first
+  await loadRates();
   allAdjustments = await loadAdjustments();
+
+  // Load from KV cache and render immediately
+  const cached = await loadShiftsFromCache();
   if (cached.length > 0) {
     allShifts = applyAdjustments(cached);
     render();
@@ -642,6 +708,59 @@ function selectPeriod(offset) {
     render();
     content.classList.remove('fading');
   }, 200);
+}
+
+// ─── Manage Roles Modal ─────────────────────────────────────────────────────────
+function openRolesModal() {
+  renderRolesList();
+  document.getElementById('newRoleName').value = '';
+  document.getElementById('newRoleRate').value = '';
+  document.getElementById('rolesSaveStatus').textContent = '';
+  document.getElementById('rolesModal').classList.add('open');
+}
+
+function closeRolesModal() {
+  document.getElementById('rolesModal').classList.remove('open');
+}
+
+function renderRolesList() {
+  const editable = Object.entries(RATES).filter(([k]) => k !== 'cafe');
+  document.getElementById('rolesList').innerHTML = editable.map(([key, r]) =>
+    '<div class="role-row">' +
+      '<div><div class="role-row-name">' + r.label + '</div>' +
+      '<div class="role-row-rate">$' + r.hourly.toFixed(2) + '/hr' + (r.tips ? ' + $' + r.tips + ' tips' : '') + '</div></div>' +
+      '<div></div>' +
+      (key !== 'other' ?
+        '<button class="role-delete-btn" onclick="deleteRole(\'' + key + '\')">🗑</button>' :
+        '<div></div>') +
+    '</div>'
+  ).join('');
+}
+
+async function addRole() {
+  const nameEl = document.getElementById('newRoleName');
+  const rateEl = document.getElementById('newRoleRate');
+  const name = nameEl.value.trim();
+  const rate = parseFloat(rateEl.value);
+  if (!name || isNaN(rate) || rate < 0) {
+    document.getElementById('rolesSaveStatus').textContent = '⚠ Enter a name and rate.';
+    return;
+  }
+  const key = name.toLowerCase().replace(/\s+/g, '-');
+  RATES[key] = { hourly: rate, tips: 0, label: name };
+  nameEl.value = '';
+  rateEl.value = '';
+  renderRolesList();
+  await saveRates();
+  document.getElementById('rolesSaveStatus').textContent = '✓ ' + name + ' added at $' + rate.toFixed(2) + '/hr';
+}
+
+async function deleteRole(key) {
+  if (key === 'cafe' || key === 'other') return;
+  delete RATES[key];
+  renderRolesList();
+  await saveRates();
+  document.getElementById('rolesSaveStatus').textContent = '✓ Role removed';
 }
 
 // ─── Adjust Hours Modal ─────────────────────────────────────────────────────────
