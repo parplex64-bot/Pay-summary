@@ -160,7 +160,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.6.1</div>
+  <div class="version">v2.6.2</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -235,7 +235,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.6.1';
+const VERSION = 'v2.6.2';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -244,6 +244,8 @@ const PROXIES = [
   { name: 'corsproxy.io', url: () => 'https://corsproxy.io/?' + encodeURIComponent(ICAL_SOURCE) },
   { name: 'allorigins', url: () => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(ICAL_SOURCE) },
 ];
+
+const WORKER_URL = 'https://dry-mouse-7189.gavinzweers08.workers.dev';
 
 const DEFAULT_RATES = {
   cashier:    { hourly: 18, tips: 0, label: 'Cashier' },
@@ -273,8 +275,6 @@ async function saveRates() {
     });
   } catch(e) { console.warn('Rate save failed:', e); }
 }
-
-const WORKER_URL = 'https://dry-mouse-7189.gavinzweers08.workers.dev';
 
 async function saveShiftsToCache(shifts) {
   try {
