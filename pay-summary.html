@@ -153,7 +153,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.5.0</div>
+  <div class="version">v2.5.1</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -207,7 +207,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.5.0';
+const VERSION = 'v2.5.1';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -938,6 +938,49 @@ async function saveAllAdjustments() {
   setTimeout(() => {
     closeAdjustModal();
   }, 600);
+}
+
+// ─── Post-shift prompt ────────────────────────────────────────────────────────
+function checkForRecentShift() {
+  const now = new Date();
+  const THIRTY_MIN = 30 * 60 * 1000;
+  const TWELVE_HRS = 12 * 60 * 60 * 1000;
+
+  // Find shifts where end time is within 30 min from now (before or after)
+  // and haven't been adjusted yet
+  const candidate = allShifts.find(s => {
+    if (!s.end) return false;
+    const msUntilEnd = s.end - now;
+    const alreadyAdjusted = allAdjustments[shiftKey(s)];
+    // Prompt if: ends in next 30 min, OR ended up to 12 hrs ago
+    return !alreadyAdjusted && msUntilEnd <= THIRTY_MIN && msUntilEnd >= -TWELVE_HRS;
+  });
+
+  if (!candidate) return;
+
+  // Find the period offset this shift belongs to
+  for (let offset = -2; offset <= 2; offset++) {
+    const shifts = getShiftsForPeriod(offset);
+    if (shifts.some(s => shiftKey(s) === shiftKey(candidate))) {
+      periodOffset = offset;
+      document.querySelectorAll('.period-btn').forEach((b, i) =>
+        b.classList.toggle('active', [-1, 0, 1][i] === offset)
+      );
+      render();
+      break;
+    }
+  }
+
+  // Small delay so the page renders first, then pop the modal
+  setTimeout(() => {
+    const msUntilEnd = candidate.end - now;
+    const label = RATES[candidate.role] ? RATES[candidate.role].label : candidate.role;
+    const timeMsg = msUntilEnd > 0
+      ? 'Your ' + label + ' shift ends in ' + Math.round(msUntilEnd / 60000) + ' min'
+      : 'Your ' + label + ' shift just ended';
+    document.getElementById('adjustSubtitle').textContent = timeMsg + ' — log your actual hours!';
+    openAdjustModal();
+  }, 800);
 }
 
 loadShifts().then(() => checkForRecentShift());
