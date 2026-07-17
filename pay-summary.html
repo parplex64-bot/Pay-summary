@@ -135,7 +135,14 @@
 
   .modal-save-btn { width: 100%; background: #facc15; border: none; color: #000; padding: 16px; border-radius: 12px; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; margin-top: 16px; }
   .modal-save-btn:active { background: #eab308; }
-  .modal-save-status { text-align: center; font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 10px; min-height: 14px; }
+  .post-shift-modal { background: #0d0d0d; border: 1px solid #facc15; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; padding: 24px 20px 32px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.25,1,.4,1); }
+  .modal-overlay.open .post-shift-modal { transform: translateY(0); }
+  .post-shift-emoji { font-size: 36px; text-align: center; margin-bottom: 12px; }
+  .post-shift-title { font-size: 20px; font-weight: 800; color: #fff; text-align: center; margin-bottom: 6px; }
+  .post-shift-subtitle { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; text-align: center; margin-bottom: 24px; }
+  .post-shift-fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+  .post-shift-save-btn { width: 100%; background: #facc15; border: none; color: #000; padding: 16px; border-radius: 12px; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+  .post-shift-skip-btn { width: 100%; background: none; border: none; color: #555; font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; margin-top: 10px; padding: 8px; text-transform: uppercase; letter-spacing: 0.1em; }
 
   .role-row { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; }
   .role-row-name { font-size: 13px; font-weight: 600; color: #fff; }
@@ -153,7 +160,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.5.1</div>
+  <div class="version">v2.6.0</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -189,6 +196,27 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="postShiftModal">
+  <div class="post-shift-modal">
+    <div class="modal-handle"></div>
+    <div class="post-shift-emoji">⏱</div>
+    <div class="post-shift-title" id="postShiftTitle">Shift Just Ended</div>
+    <div class="post-shift-subtitle" id="postShiftSubtitle">Log your actual hours worked</div>
+    <div class="post-shift-fields">
+      <div class="adj-input-row" style="margin-top:0;">
+        <span class="adj-input-label">Worked hrs</span>
+        <input class="adj-input" type="text" inputmode="numeric" id="postShiftHours" placeholder="e.g. 830" oninput="handlePostShiftHoursInput(this)">
+      </div>
+      <div class="adj-input-row" style="margin-top:0;">
+        <span class="adj-input-label">Tips ($)</span>
+        <input class="adj-input tip-input" type="number" inputmode="decimal" id="postShiftTips" placeholder="0" min="0" step="1">
+      </div>
+    </div>
+    <button class="post-shift-save-btn" onclick="savePostShift()">Save & Done</button>
+    <button class="post-shift-skip-btn" onclick="skipPostShift()">Skip for now</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="adjustModal">
   <div class="modal-sheet">
     <button class="modal-close" onclick="closeAdjustModal()">✕</button>
@@ -207,7 +235,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.5.1';
+const VERSION = 'v2.6.0';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -547,18 +575,36 @@ function render() {
     return;
   }
 
-  let th=0,tp=0,ch=0,bh=0,fh=0,cp=0,bp=0,fp=0,tips=0;
+  // Build per-role totals dynamically
+  const roleTotals = {};
   shifts.forEach(s => {
     th += s.hours; tp += s.pay;
     tips += s.tips || 0;
-    if (s.role === 'cashier') { ch += s.hours; cp += s.pay; }
-    if (s.role === 'bouncer') { bh += s.hours; bp += s.pay; }
-    if (s.role === 'cafe')    { fh += s.hours; fp += s.pay; }
+    if (!roleTotals[s.role]) roleTotals[s.role] = { hours: 0, pay: 0, tips: 0 };
+    roleTotals[s.role].hours += s.hours;
+    roleTotals[s.role].pay += s.pay;
+    roleTotals[s.role].tips += s.tips || 0;
   });
+
+  // Pay date: Thursday of the week after the period ends
+  const { end: periodEnd } = getPayPeriod(periodOffset);
+  const dayAfterEnd = new Date(periodEnd.getTime() + 86400000);
+  const daysUntilThursday = (4 - dayAfterEnd.getDay() + 7) % 7;
+  const payDate = new Date(dayAfterEnd.getTime() + daysUntilThursday * 86400000);
+  const today = new Date();
+  const daysUntilPay = Math.ceil((payDate - today) / 86400000);
+  const payDateStr = payDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const payCountdown = daysUntilPay > 0 ? 'in ' + daysUntilPay + ' day' + (daysUntilPay !== 1 ? 's' : '') : daysUntilPay === 0 ? 'today!' : 'paid';
 
   const tax = calcTax(tp);
   const prevTotal = getShiftsForPeriod(periodOffset - 1).reduce((s, x) => s + x.pay, 0);
   const change = changeBadge(tp, prevTotal, false);
+
+  const byRoleRows = Object.entries(roleTotals).map(([role, t]) => {
+    const label = (RATES[role] && RATES[role].label) ? RATES[role].label : role;
+    const tipNote = t.tips > 0 ? ' <span class="tip-note">(incl. $' + t.tips.toFixed(0) + ' tips)</span>' : '';
+    return '<div class="breakdown-row"><span class="label">' + label + '</span><span class="val">' + t.hours.toFixed(2) + ' hrs · $' + t.pay.toFixed(2) + tipNote + '</span></div>';
+  }).join('') + '<div class="breakdown-row"><span class="label">Total</span><span class="val">' + th.toFixed(2) + ' hrs · $' + tp.toFixed(2) + '</span></div>';
 
   const cards = shifts.map((s, i) =>
     '<div class="shift-card">' +
@@ -594,8 +640,13 @@ function render() {
       '</div>' +
       '<div class="total-card">' +
         '<div class="total-label">Tips</div>' +
-        '<div class="total-value">$' + tips + '</div>' +
-        '<div class="total-sub">cafe shifts</div>' +
+        '<div class="total-value">$' + tips.toFixed(0) + '</div>' +
+        '<div class="total-sub">this period</div>' +
+      '</div>' +
+      '<div class="total-card">' +
+        '<div class="total-label">Pay Date</div>' +
+        '<div class="total-value" style="font-size:22px;">' + payDateStr + '</div>' +
+        '<div class="total-sub">' + payCountdown + '</div>' +
       '</div>' +
     '</div>' +
 
@@ -603,12 +654,7 @@ function render() {
     '<div class="shifts-list">' + cards + '</div>' +
 
     '<div class="section-title">By Role</div>' +
-    '<div class="breakdown">' +
-      (ch > 0 ? '<div class="breakdown-row"><span class="label">Cashier</span><span class="val">' + ch.toFixed(2) + ' hrs · $' + cp.toFixed(2) + '</span></div>' : '') +
-      (bh > 0 ? '<div class="breakdown-row"><span class="label">Bouncer</span><span class="val">' + bh.toFixed(2) + ' hrs · $' + bp.toFixed(2) + '</span></div>' : '') +
-      (fh > 0 ? '<div class="breakdown-row"><span class="label">Cafe</span><span class="val">' + fh.toFixed(2) + ' hrs · $' + fp.toFixed(2) + ' <span class="tip-note">(incl. tips)</span></span></div>' : '') +
-      '<div class="breakdown-row"><span class="label">Total</span><span class="val">' + th.toFixed(2) + ' hrs · $' + tp.toFixed(2) + '</span></div>' +
-    '</div>' +
+    '<div class="breakdown">' + byRoleRows + '</div>' +
 
     '<div class="section-title">After Taxes · Oregon · Single</div>' +
     '<div class="tax-highlight">' +
@@ -712,6 +758,7 @@ function selectPeriod(offset) {
 
 // ─── Manage Roles Modal ─────────────────────────────────────────────────────────
 function openRolesModal() {
+  document.body.style.overflow = 'hidden';
   renderRolesList();
   document.getElementById('newRoleName').value = '';
   document.getElementById('newRoleRate').value = '';
@@ -720,6 +767,7 @@ function openRolesModal() {
 }
 
 function closeRolesModal() {
+  document.body.style.overflow = '';
   document.getElementById('rolesModal').classList.remove('open');
 }
 
@@ -768,6 +816,7 @@ let pendingAdjustments = {}; // staged edits before save
 let pendingScreenshot = null; // single { name, dataUrl } for this period
 
 function openAdjustModal() {
+  document.body.style.overflow = 'hidden';
   const { start, end } = getPayPeriod(periodOffset);
   document.getElementById('adjustSubtitle').textContent =
     formatDate(start) + ' – ' + periodEndDisplay(end) + ' · tap a field to adjust';
@@ -819,6 +868,7 @@ function openAdjustModal() {
 }
 
 function closeAdjustModal() {
+  document.body.style.overflow = '';
   document.getElementById('adjustModal').classList.remove('open');
 }
 
@@ -941,46 +991,69 @@ async function saveAllAdjustments() {
 }
 
 // ─── Post-shift prompt ────────────────────────────────────────────────────────
+let postShiftCandidate = null;
+
 function checkForRecentShift() {
   const now = new Date();
   const THIRTY_MIN = 30 * 60 * 1000;
   const TWELVE_HRS = 12 * 60 * 60 * 1000;
 
-  // Find shifts where end time is within 30 min from now (before or after)
-  // and haven't been adjusted yet
-  const candidate = allShifts.find(s => {
+  postShiftCandidate = allShifts.find(s => {
     if (!s.end) return false;
     const msUntilEnd = s.end - now;
     const alreadyAdjusted = allAdjustments[shiftKey(s)];
-    // Prompt if: ends in next 30 min, OR ended up to 12 hrs ago
     return !alreadyAdjusted && msUntilEnd <= THIRTY_MIN && msUntilEnd >= -TWELVE_HRS;
   });
 
-  if (!candidate) return;
+  if (!postShiftCandidate) return;
 
-  // Find the period offset this shift belongs to
-  for (let offset = -2; offset <= 2; offset++) {
-    const shifts = getShiftsForPeriod(offset);
-    if (shifts.some(s => shiftKey(s) === shiftKey(candidate))) {
-      periodOffset = offset;
-      document.querySelectorAll('.period-btn').forEach((b, i) =>
-        b.classList.toggle('active', [-1, 0, 1][i] === offset)
-      );
-      render();
-      break;
-    }
+  const label = (RATES[postShiftCandidate.role] && RATES[postShiftCandidate.role].label)
+    ? RATES[postShiftCandidate.role].label : postShiftCandidate.role;
+  const msUntilEnd = postShiftCandidate.end - now;
+  const timeMsg = msUntilEnd > 0
+    ? 'Your ' + label + ' shift ends in ' + Math.round(msUntilEnd / 60000) + ' min'
+    : 'Your ' + label + ' shift just ended';
+  const dateStr = postShiftCandidate.start.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+  setTimeout(() => {
+    document.getElementById('postShiftTitle').textContent = label + ' Shift';
+    document.getElementById('postShiftSubtitle').textContent = dateStr + ' · ' + timeMsg;
+    document.getElementById('postShiftHours').value = '';
+    document.getElementById('postShiftTips').value = '';
+    document.body.style.overflow = 'hidden';
+    document.getElementById('postShiftModal').classList.add('open');
+  }, 800);
+}
+
+function handlePostShiftHoursInput(inputEl) {
+  const raw = inputEl.value.replace(/[^\d.]/g, '');
+  if (raw.includes('.')) { inputEl.value = raw; return; }
+  inputEl.value = raw.length >= 3 ? raw.slice(0, raw.length - 2) + '.' + raw.slice(-2) : raw;
+}
+
+async function savePostShift() {
+  if (!postShiftCandidate) return;
+  const hoursVal = parseFloat(document.getElementById('postShiftHours').value);
+  const tipsVal = parseFloat(document.getElementById('postShiftTips').value) || 0;
+  const key = shiftKey(postShiftCandidate);
+
+  if (!isNaN(hoursVal) && hoursVal >= 0) {
+    allAdjustments[key] = { actualHours: hoursVal, actualTips: tipsVal || undefined, savedAt: Date.now() };
+    await saveAdjustments();
+    const cached = await loadShiftsFromCache();
+    allShifts = applyAdjustments(cached);
+    render();
   }
 
-  // Small delay so the page renders first, then pop the modal
-  setTimeout(() => {
-    const msUntilEnd = candidate.end - now;
-    const label = RATES[candidate.role] ? RATES[candidate.role].label : candidate.role;
-    const timeMsg = msUntilEnd > 0
-      ? 'Your ' + label + ' shift ends in ' + Math.round(msUntilEnd / 60000) + ' min'
-      : 'Your ' + label + ' shift just ended';
-    document.getElementById('adjustSubtitle').textContent = timeMsg + ' — log your actual hours!';
-    openAdjustModal();
-  }, 800);
+  document.body.style.overflow = '';
+  document.getElementById('postShiftModal').classList.remove('open');
+  postShiftCandidate = null;
+}
+
+function skipPostShift() {
+  document.body.style.overflow = '';
+  document.getElementById('postShiftModal').classList.remove('open');
+  postShiftCandidate = null;
 }
 
 loadShifts().then(() => checkForRecentShift());
