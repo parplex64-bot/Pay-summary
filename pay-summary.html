@@ -160,7 +160,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.6.0</div>
+  <div class="version">v2.6.1</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -235,7 +235,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.6.0';
+const VERSION = 'v2.6.1';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -696,16 +696,23 @@ async function tryFetch(proxy, index) {
 async function loadShifts() {
   document.getElementById('content').innerHTML =
     '<div class="loading">Connecting to When I Work...' +
-    '<div class="loading-detail" id="loadingDetail">Loading saved shifts...</div></div>';
+    '<div class="loading-detail" id="loadingDetail">Loading...</div></div>';
   document.getElementById('log-section').innerHTML = '';
   document.getElementById('status').textContent = '';
 
-  // Load rates and adjustments first
-  await loadRates();
-  allAdjustments = await loadAdjustments();
+  // Load KV data in parallel with a 5s timeout, don't let it block iCal fetch
+  const timeout = (ms) => new Promise(res => setTimeout(res, ms));
+  const safeLoad = (fn) => Promise.race([fn(), timeout(5000)]).catch(() => null);
 
-  // Load from KV cache and render immediately
-  const cached = await loadShiftsFromCache();
+  const [, adjResult, cachedResult] = await Promise.all([
+    safeLoad(loadRates),
+    safeLoad(loadAdjustments),
+    safeLoad(loadShiftsFromCache)
+  ]);
+
+  if (adjResult) allAdjustments = adjResult;
+  const cached = Array.isArray(cachedResult) ? cachedResult : [];
+
   if (cached.length > 0) {
     allShifts = applyAdjustments(cached);
     render();
