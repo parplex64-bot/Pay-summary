@@ -100,6 +100,8 @@
   .adjust-btn:hover { background: #2a2406; border-color: #facc15; }
   .roles-btn { width: 100%; background: #0a1a2a; border: 1px solid #1d4ed8; color: #60a5fa; padding: 14px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; margin-top: 8px; }
   .roles-btn:hover { background: #0d1f3a; border-color: #60a5fa; }
+  .add-shift-btn { width: 100%; background: #0a1a0a; border: 1px solid #166534; color: #4ade80; padding: 14px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; margin-top: 8px; }
+  .add-shift-btn:hover { background: #0d2010; border-color: #4ade80; }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
   .modal-overlay.open { opacity: 1; pointer-events: auto; }
@@ -160,7 +162,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.6.6</div>
+  <div class="version">v2.7.0</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -177,8 +179,42 @@
 <div id="log-section"></div>
 <button class="refresh-btn" onclick="loadShifts()">↻ Refresh Shifts</button>
 <button class="adjust-btn" onclick="openAdjustModal()">✎ Adjust Worked Hours</button>
+<button class="add-shift-btn" onclick="openAddShiftModal()">＋ Add Manual Shift</button>
 <button class="roles-btn" onclick="openRolesModal()">⚙ Manage Roles & Pay</button>
 <div class="status" id="status"></div>
+
+<div class="modal-overlay" id="addShiftModal">
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="closeAddShiftModal()">✕</button>
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Manual Shift</div>
+    <div class="modal-subtitle">For shifts not in When I Work</div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+      <div class="adj-input-row" style="margin-top:0;">
+        <span class="adj-input-label">Date</span>
+        <input class="adj-input" type="date" id="addShiftDate">
+      </div>
+      <div class="adj-input-row" style="margin-top:0;">
+        <span class="adj-input-label">Role</span>
+        <select class="adj-input" id="addShiftRole" style="color:#fff;background:#111;"></select>
+      </div>
+      <div class="adj-input-row" style="margin-top:0;">
+        <span class="adj-input-label">Hours</span>
+        <input class="adj-input" type="text" inputmode="numeric" id="addShiftHours" placeholder="e.g. 830" oninput="handleAddShiftHoursInput(this)">
+      </div>
+      <div class="adj-input-row" style="margin-top:0;">
+        <span class="adj-input-label">Tips ($)</span>
+        <input class="adj-input tip-input" type="number" inputmode="decimal" id="addShiftTips" placeholder="0" min="0" step="1">
+      </div>
+      <div class="adj-input-row" style="margin-top:0;">
+        <span class="adj-input-label">Note</span>
+        <input class="adj-input" type="text" id="addShiftNote" placeholder="e.g. Cleanup shift">
+      </div>
+    </div>
+    <button class="modal-save-btn" onclick="saveManualShift()" style="margin-top:20px;">Add Shift</button>
+    <div class="modal-save-status" id="addShiftStatus"></div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="rolesModal">
   <div class="modal-sheet">
@@ -235,7 +271,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.6.6';
+const VERSION = 'v2.7.0';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -305,9 +341,15 @@ async function loadShiftsFromCache() {
 
 function mergeShifts(existing, incoming) {
   const map = new Map();
-  [...existing, ...incoming].forEach(s => {
-    const key = s.start.getTime() + '_' + s.role;
+  // Add existing first (preserves manual shifts)
+  existing.forEach(s => {
+    const key = s.start.getTime() + '_' + s.role + (s.manual ? '_manual' : '');
     map.set(key, s);
+  });
+  // Incoming iCal shifts only overwrite non-manual entries
+  incoming.forEach(s => {
+    const key = s.start.getTime() + '_' + s.role;
+    if (!map.has(key + '_manual')) map.set(key, s);
   });
   return Array.from(map.values()).sort((a, b) => a.start - b.start);
 }
@@ -610,11 +652,10 @@ function render() {
   const cards = shifts.map((s, i) =>
     '<div class="shift-card">' +
       '<div>' +
-        '<div class="shift-role">' + badge(s.role) + ' ' + s.role.charAt(0).toUpperCase() + s.role.slice(1) + (s.adjusted ? ' <span class="adjusted-tag">✎ ADJUSTED</span>' : '') + '</div>' +
+        '<div class="shift-role">' + badge(s.role) + ' ' + s.role.charAt(0).toUpperCase() + s.role.slice(1) + (s.adjusted ? ' <span class="adjusted-tag">✎ ADJUSTED</span>' : '') + (s.manual ? ' <span class="adjusted-tag" style="color:#60a5fa;background:#0a1a2a;border:1px solid #1d4ed8;">MANUAL</span>' : '') + '</div>' +
         '<div class="shift-date">' +
           s.start.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }) +
-          ' · ' + s.start.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) +
-          ' – ' + (s.end ? s.end.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '?') +
+          (s.manual && s.note ? ' · ' + s.note : (!s.manual ? ' · ' + s.start.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) + ' – ' + (s.end ? s.end.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '?') : '')) +
         '</div>' +
       '</div>' +
       '<div class="shift-right">' +
@@ -762,6 +803,102 @@ function selectPeriod(offset) {
     render();
     content.classList.remove('fading');
   }, 200);
+}
+
+// ─── Add Manual Shift Modal ───────────────────────────────────────────────────
+function openAddShiftModal() {
+  document.body.style.overflow = 'hidden';
+
+  // Set default date to today
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('addShiftDate').value = yyyy + '-' + mm + '-' + dd;
+
+  // Populate role dropdown from RATES
+  const select = document.getElementById('addShiftRole');
+  select.innerHTML = Object.entries(RATES).map(([key, r]) =>
+    '<option value="' + key + '">' + r.label + '</option>'
+  ).join('');
+
+  document.getElementById('addShiftHours').value = '';
+  document.getElementById('addShiftTips').value = '';
+  document.getElementById('addShiftNote').value = '';
+  document.getElementById('addShiftStatus').textContent = '';
+  document.getElementById('addShiftModal').classList.add('open');
+}
+
+function closeAddShiftModal() {
+  document.body.style.overflow = '';
+  document.getElementById('addShiftModal').classList.remove('open');
+}
+
+function handleAddShiftHoursInput(inputEl) {
+  const raw = inputEl.value.replace(/[^\d.]/g, '');
+  if (raw.includes('.')) { inputEl.value = raw; return; }
+  inputEl.value = raw.length >= 3 ? raw.slice(0, raw.length - 2) + '.' + raw.slice(-2) : raw;
+}
+
+async function saveManualShift() {
+  const dateVal = document.getElementById('addShiftDate').value;
+  const role = document.getElementById('addShiftRole').value;
+  const hoursVal = parseFloat(document.getElementById('addShiftHours').value);
+  const tipsVal = parseFloat(document.getElementById('addShiftTips').value) || 0;
+  const note = document.getElementById('addShiftNote').value.trim();
+  const statusEl = document.getElementById('addShiftStatus');
+
+  if (!dateVal) { statusEl.textContent = '⚠ Please pick a date.'; return; }
+  if (isNaN(hoursVal) || hoursVal <= 0) { statusEl.textContent = '⚠ Please enter hours worked.'; return; }
+
+  statusEl.textContent = 'Saving...';
+
+  const rate = RATES[role] || RATES['other'];
+  const start = new Date(dateVal + 'T12:00:00'); // noon local time
+  const end = new Date(start.getTime() + hoursVal * 3600000);
+
+  const manualShift = {
+    title: 'Manual: ' + rate.label,
+    start: start.getTime(),
+    end: end.getTime(),
+    role,
+    hours: hoursVal,
+    tips: tipsVal,
+    pay: hoursVal * rate.hourly + tipsVal,
+    manual: true,
+    note: note || null,
+  };
+
+  // Load current cache, add this shift, save back
+  const cached = await loadShiftsFromCache();
+  const key = start.getTime() + '_' + role + '_manual';
+  // Remove any existing manual shift with same key to avoid dupes
+  const filtered = cached.filter(s => {
+    const k = s.start.getTime ? s.start.getTime() + '_' + s.role + '_manual' : s.start + '_' + s.role + '_manual';
+    return k !== key;
+  });
+
+  // Add the new shift in raw (timestamps) form
+  const rawCached = filtered.map(s => ({
+    ...s,
+    start: s.start instanceof Date ? s.start.getTime() : s.start,
+    end: s.end instanceof Date ? s.end.getTime() : s.end
+  }));
+  rawCached.push(manualShift);
+
+  await fetch(WORKER_URL + '/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rawCached)
+  });
+
+  // Reload and render
+  const fresh = await loadShiftsFromCache();
+  allShifts = applyAdjustments(fresh);
+  render();
+
+  statusEl.textContent = '✓ Shift added!';
+  setTimeout(() => closeAddShiftModal(), 800);
 }
 
 // ─── Manage Roles Modal ─────────────────────────────────────────────────────────
