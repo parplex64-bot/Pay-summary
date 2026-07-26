@@ -1017,31 +1017,37 @@ function closeAdjustModal() {
   document.getElementById('adjustModal').classList.remove('open');
 }
 
-// Auto-inserts a decimal point as the person types digits.
-// 3+ digits: decimal goes 2 from the end (830 -> 8.30, 1030 -> 10.30, 1230 -> 12.30)
-// 1-2 digits: left as-is so short values like "8" or "12" stay clean
-function formatHoursInput(num) {
-  return num % 1 === 0 ? String(num) : num.toFixed(2).replace(/0$/, '');
+function parseHoursInput(raw) {
+  // Convert HHMM style input to decimal hours
+  // e.g. 1130 -> 11.5, 830 -> 8.5, 1140 -> 11.667, 600 -> 6.0
+  const digits = raw.replace(/[^\d]/g, '');
+  if (!digits) return NaN;
+  if (digits.length <= 2) return parseFloat(digits);
+  const mins = parseInt(digits.slice(-2));
+  const hrs = parseInt(digits.slice(0, digits.length - 2));
+  return hrs + (mins / 60);
+}
+
+function formatHoursDisplay(raw) {
+  // Show as HH:MM while typing, e.g. 1130 shows as 11:30
+  const digits = raw.replace(/[^\d]/g, '');
+  if (digits.length <= 2) return digits;
+  return digits.slice(0, digits.length - 2) + ':' + digits.slice(-2);
 }
 
 function handleHoursInput(key, inputEl) {
-  const raw = inputEl.value.replace(/[^\d.]/g, '');
-  // If user already typed a decimal point themselves, respect it as-is
-  if (raw.includes('.')) {
-    inputEl.value = raw;
-    stageAdjustment(key, raw);
-    return;
-  }
-  let formatted = raw;
-  if (raw.length >= 3) {
-    formatted = raw.slice(0, raw.length - 2) + '.' + raw.slice(-2);
-  }
-  inputEl.value = formatted;
-  stageAdjustment(key, formatted);
+  // Strip everything except digits
+  const digits = inputEl.value.replace(/\D/g, '');
+  // Limit to 4 digits max (HHMM)
+  const capped = digits.slice(0, 4);
+  inputEl.value = formatHoursDisplay(capped);
+  // Store raw digits on element for later reads
+  inputEl.dataset.digits = capped;
+  stageAdjustment(key, capped);
 }
 
-function stageAdjustment(key, value) {
-  const num = parseFloat(value);
+function stageAdjustment(key, raw) {
+  const num = parseHoursInput(raw);
   if (!isNaN(num) && num >= 0) {
     pendingAdjustments[key] = { ...(pendingAdjustments[key] || {}), actualHours: num };
   } else {
