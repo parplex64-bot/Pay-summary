@@ -162,7 +162,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.7.1</div>
+  <div class="version">v2.7.2</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -271,7 +271,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.7.1';
+const VERSION = 'v2.7.2';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -966,25 +966,27 @@ function openAdjustModal() {
   const { start, end } = getPayPeriod(periodOffset);
   document.getElementById('adjustSubtitle').textContent =
     formatDate(start) + ' – ' + periodEndDisplay(end) + ' · tap a field to adjust';
-  const shifts = getShiftsForPeriod(periodOffset).sort((a, b) => a.start - b.start);
-  pendingAdjustments = {};
-  pendingScreenshot = null;
 
   const uploadLabel = document.getElementById('timesheetUploadLabel');
   uploadLabel.classList.remove('has-file');
   uploadLabel.textContent = '📷 Attach timesheet screenshot';
   document.getElementById('timesheetUploadInput').value = '';
   document.getElementById('timesheetPreview').innerHTML = '';
+  pendingAdjustments = {};
+  pendingScreenshot = null;
+
+  const shifts = getShiftsForPeriod(periodOffset).sort((a, b) => a.start - b.start);
 
   if (!shifts.length) {
     document.getElementById('adjustList').innerHTML =
       '<div class="empty-log">No shifts in this period to adjust.</div>';
   } else {
-    document.getElementById('adjustList').innerHTML = shifts.map((s) => {
+    try {
+      document.getElementById('adjustList').innerHTML = shifts.map((s) => {
       const key = shiftKey(s);
       const existing = allAdjustments[key];
       const scheduledHours = s.scheduledHours !== undefined ? s.scheduledHours : s.hours;
-      const currentVal = existing && typeof existing.actualHours === 'number' ? formatHoursInput(existing.actualHours) : '';
+      const currentVal = existing && typeof existing.actualHours === 'number' ? formatHoursDisplay(String(Math.round(existing.actualHours * 60)).padStart(3, '0')) : '';
       const currentTip = existing && typeof existing.actualTips === 'number' ? String(existing.actualTips) : '';
       return (
         '<div class="adj-shift-row" data-key="' + key + '">' +
@@ -1007,6 +1009,10 @@ function openAdjustModal() {
         '</div>'
       );
     }).join('');
+    } catch(e) {
+      document.getElementById('adjustList').innerHTML =
+        '<div class="empty-log">Error loading shifts: ' + e.message + '</div>';
+    }
   }
 
   document.getElementById('adjustSaveStatus').textContent = '';
