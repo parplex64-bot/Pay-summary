@@ -162,7 +162,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.7.3</div>
+  <div class="version">v2.7.4</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -200,7 +200,7 @@
       </div>
       <div class="adj-input-row" style="margin-top:0;">
         <span class="adj-input-label">Hours</span>
-        <input class="adj-input" type="number" inputmode="decimal" step="0.01" min="0" max="24" id="addShiftHours" placeholder="e.g. 4.52">
+        <input class="adj-input" type="text" inputmode="numeric" id="addShiftHours" placeholder="e.g. 888 = 8.88" oninput="handleAddShiftHoursInput(this)">
       </div>
       <div class="adj-input-row" style="margin-top:0;">
         <span class="adj-input-label">Tips ($)</span>
@@ -241,7 +241,7 @@
     <div class="post-shift-fields">
       <div class="adj-input-row" style="margin-top:0;">
         <span class="adj-input-label">Worked hrs</span>
-        <input class="adj-input" type="number" inputmode="decimal" step="0.01" min="0" max="24" id="postShiftHours" placeholder="e.g. 4.52">
+        <input class="adj-input" type="text" inputmode="numeric" id="postShiftHours" placeholder="e.g. 888 = 8.88" oninput="handlePostShiftHoursInput(this)">
       </div>
       <div class="adj-input-row" style="margin-top:0;">
         <span class="adj-input-label">Tips ($)</span>
@@ -271,7 +271,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.7.3';
+const VERSION = 'v2.7.4';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -834,15 +834,25 @@ function closeAddShiftModal() {
   document.getElementById('addShiftModal').classList.remove('open');
 }
 
+function autoDecimal(inputEl) {
+  const digits = inputEl.value.replace(/\D/g, '').slice(0, 4);
+  if (!digits) { inputEl.value = ''; return ''; }
+  const formatted = digits.length >= 3
+    ? digits.slice(0, digits.length - 2) + '.' + digits.slice(-2)
+    : digits;
+  inputEl.value = formatted;
+  return formatted;
+}
+
 function handleAddShiftHoursInput(inputEl) {
-  // plain decimal, no formatting needed
+  autoDecimal(inputEl);
 }
 
 async function saveManualShift() {
   const dateVal = document.getElementById('addShiftDate').value;
   const role = document.getElementById('addShiftRole').value;
   const hoursEl = document.getElementById('addShiftHours');
-  const hoursVal = parseFloat(hoursEl.value);
+  const hoursVal = parseHoursInput(hoursEl.value);
   const tipsVal = parseFloat(document.getElementById('addShiftTips').value) || 0;
   const note = document.getElementById('addShiftNote').value.trim();
   const statusEl = document.getElementById('addShiftStatus');
@@ -997,7 +1007,7 @@ function openAdjustModal() {
           '</div>' +
           '<div class="adj-input-row">' +
             '<span class="adj-input-label">Worked hrs</span>' +
-            '<input class="adj-input" type="number" inputmode="decimal" step="0.01" min="0" max="24" placeholder="e.g. 4.52" value="' + currentVal + '" oninput="handleHoursInput(\'' + key + '\', this)">' +
+            '<input class="adj-input" type="text" inputmode="numeric" placeholder="e.g. 888 = 8.88" value="' + currentVal + '" oninput="handleHoursInput(\'' + key + '\', this)">' +
             (existing ? '<button class="adj-clear-btn" onclick="clearAdjustment(\'' + key + '\')">Clear</button>' : '') +
           '</div>' +
           '<div class="adj-input-row">' +
@@ -1023,12 +1033,13 @@ function closeAdjustModal() {
 }
 
 function parseHoursInput(val) {
-  const num = parseFloat(val);
+  const num = parseFloat(String(val).replace(/[^\d.]/g, ''));
   return isNaN(num) ? NaN : num;
 }
 
 function handleHoursInput(key, inputEl) {
-  stageAdjustment(key, inputEl.value);
+  const val = autoDecimal(inputEl);
+  stageAdjustment(key, val);
 }
 
 function stageAdjustment(key, raw) {
@@ -1162,13 +1173,13 @@ function checkForRecentShift() {
 }
 
 function handlePostShiftHoursInput(inputEl) {
-  // plain decimal, no formatting needed
+  autoDecimal(inputEl);
 }
 
 async function savePostShift() {
   if (!postShiftCandidate) return;
   const hoursEl = document.getElementById('postShiftHours');
-  const hoursVal = parseFloat(hoursEl.value);
+  const hoursVal = parseHoursInput(hoursEl.value);
   const tipsVal = parseFloat(document.getElementById('postShiftTips').value) || 0;
   const key = shiftKey(postShiftCandidate);
 
