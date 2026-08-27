@@ -137,7 +137,29 @@
 
   .modal-save-btn { width: 100%; background: #facc15; border: none; color: #000; padding: 16px; border-radius: 12px; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; margin-top: 16px; }
   .modal-save-btn:active { background: #eab308; }
-  .post-shift-modal { background: #0d0d0d; border: 1px solid #facc15; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; padding: 24px 20px 32px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.25,1,.4,1); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
+  .cal-day { background: var(--card); border: 1px solid var(--border); border-radius: 8px; min-height: 72px; padding: 6px 4px; position: relative; transition: background 0.15s; }
+  .cal-day.today { border-color: #facc15; }
+  .cal-day.drag-over { background: #1a2a1a; border-color: #4ade80; }
+  .cal-day-label { font-size: 9px; color: var(--muted); font-family: 'DM Mono', monospace; text-align: center; margin-bottom: 4px; }
+  .cal-day-num { font-size: 13px; font-weight: 700; color: #fff; text-align: center; margin-bottom: 4px; font-family: 'DM Mono', monospace; }
+  .cal-day.today .cal-day-num { color: #facc15; }
+  .cal-shift-chip { font-size: 8px; font-family: 'DM Mono', monospace; padding: 2px 4px; border-radius: 4px; margin-bottom: 2px; cursor: grab; text-align: center; line-height: 1.3; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .cal-shift-chip.cashier { background: #0a2a0a; color: #4ade80; border: 1px solid #166534; }
+  .cal-shift-chip.bouncer { background: #0a1a2a; color: #60a5fa; border: 1px solid #1d4ed8; }
+  .cal-shift-chip.cafe { background: #222; color: #fff; border: 1px solid #555; }
+  .cal-shift-chip.other { background: #1a0a2a; color: #c084fc; border: 1px solid #7e22ce; }
+  .cal-shift-chip.dragging { opacity: 0.4; }
+
+  /* Shift action modal */
+  .shift-action-sheet { background: #0d0d0d; border: 1px solid var(--border); border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; padding: 20px; transform: translateY(100%); transition: transform 0.25s cubic-bezier(.25,1,.4,1); }
+  .modal-overlay.open .shift-action-sheet { transform: translateY(0); }
+  .action-btn { width: 100%; background: var(--card); border: 1px solid var(--border); color: #fff; padding: 14px; border-radius: 10px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.1em; cursor: pointer; text-transform: uppercase; margin-top: 8px; text-align: center; }
+  .action-btn.danger { color: #f87171; border-color: #7f1d1d; background: #1a0a0a; }
+
+  /* Move confirm modal */
+  .move-confirm-sheet { background: #0d0d0d; border: 1px solid #166534; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; padding: 24px 20px; transform: translateY(100%); transition: transform 0.25s cubic-bezier(.25,1,.4,1); }
+  .modal-overlay.open .move-confirm-sheet { transform: translateY(0); }
   .modal-overlay.open .post-shift-modal { transform: translateY(0); }
   .post-shift-emoji { font-size: 36px; text-align: center; margin-bottom: 12px; }
   .post-shift-title { font-size: 20px; font-weight: 800; color: #fff; text-align: center; margin-bottom: 6px; }
@@ -162,7 +184,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.7.4</div>
+  <div class="version">v2.8.0</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -232,6 +254,27 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="shiftActionModal">
+  <div class="shift-action-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="shiftActionTitle" style="font-size:16px;margin-bottom:4px;"></div>
+    <div class="modal-subtitle" id="shiftActionSub"></div>
+    <button class="action-btn" onclick="editShiftFromAction()" style="margin-top:16px;">✎ Edit Hours & Tips</button>
+    <button class="action-btn danger" onclick="deleteShiftFromAction()">🗑 Delete Shift</button>
+    <button class="action-btn" onclick="closeShiftActionModal()" style="color:var(--muted);margin-top:4px;">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="moveConfirmModal">
+  <div class="move-confirm-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="font-size:16px;margin-bottom:8px;">Move Shift?</div>
+    <div class="modal-subtitle" id="moveConfirmText" style="margin-bottom:20px;line-height:1.6;"></div>
+    <button class="modal-save-btn" onclick="confirmMove()" style="background:#4ade80;color:#000;">Confirm Move</button>
+    <button class="action-btn" onclick="cancelMove()" style="color:var(--muted);margin-top:8px;">Cancel</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="postShiftModal">
   <div class="post-shift-modal">
     <div class="modal-handle"></div>
@@ -271,7 +314,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.7.4';
+const VERSION = 'v2.8.0';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -692,10 +735,10 @@ function render() {
       '</div>' +
     '</div>' +
 
-    '<div class="section-title">Shifts</div>' +
-    '<div class="shifts-list">' + cards + '</div>' +
+    '<div class="section-title">Schedule</div>' +
+    '<div class="cal-grid" id="calGrid"></div>' +
 
-    '<div class="section-title">By Role</div>' +
+    '<div class="section-title" style="margin-top:24px;">By Role</div>' +
     '<div class="breakdown">' + byRoleRows + '</div>' +
 
     '<div class="section-title">After Taxes · Oregon · Single</div>' +
@@ -713,7 +756,237 @@ function render() {
     '</div>' +
     '<div class="tax-note">* Estimates based on 2026 rates, single filer. Actual withholding may vary.</div>';
 
+  renderCalGrid(shifts, start);
   renderLog();
+}
+
+// ─── Calendar Grid ────────────────────────────────────────────────────────────
+let draggedShift = null;
+let dragTargetDate = null;
+let actionShift = null;
+let pendingMove = null;
+
+function calDayKey(date) {
+  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+}
+
+function renderCalGrid(shifts, periodStart) {
+  const grid = document.getElementById('calGrid');
+  if (!grid) return;
+  const today = new Date();
+  const todayKey = calDayKey(today);
+  const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  // Build map of dayKey -> shifts
+  const dayMap = {};
+  shifts.forEach(s => {
+    const k = pacificDate(s.start);
+    if (!dayMap[k]) dayMap[k] = [];
+    dayMap[k].push(s);
+  });
+
+  let html = '';
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(periodStart.getTime() + i * 86400000);
+    const k = calDayKey(d);
+    const isToday = k === todayKey;
+    const dayShifts = dayMap[k] || [];
+    html += '<div class="cal-day' + (isToday ? ' today' : '') + '" data-daykey="' + k + '" data-date="' + d.toISOString().slice(0,10) + '" ondragover="calDragOver(event)" ondrop="calDrop(event)" ondragleave="calDragLeave(event)">';
+    html += '<div class="cal-day-label">' + DAY_NAMES[d.getDay()] + '</div>';
+    html += '<div class="cal-day-num">' + d.getDate() + '</div>';
+    dayShifts.forEach(s => {
+      const chipClass = ['cashier','bouncer','cafe'].includes(s.role) ? s.role : 'other';
+      const label = (RATES[s.role] && RATES[s.role].label) ? RATES[s.role].label : s.role;
+      const hrs = s.hours.toFixed(2);
+      const sk = shiftKey(s);
+      html += '<div class="cal-shift-chip ' + chipClass + '" draggable="true" data-shiftkey="' + sk + '" ' +
+        'ondragstart="calDragStart(event,\'' + sk + '\')" ' +
+        'ondragend="calDragEnd(event)" ' +
+        'ontouchstart="calTouchStart(event,\'' + sk + '\')" ' +
+        'onclick="openShiftAction(\'' + sk + '\')">' +
+        label + '<br>' + hrs + 'h' +
+        '</div>';
+    });
+    html += '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+// ─── Drag (mouse) ─────────────────────────────────────────────────────────────
+function calDragStart(e, sk) {
+  draggedShift = sk;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => {
+    const el = e.target;
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+
+function calDragEnd(e) {
+  document.querySelectorAll('.cal-shift-chip').forEach(c => c.classList.remove('dragging'));
+  document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('drag-over'));
+}
+
+function calDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const cell = e.currentTarget;
+  document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('drag-over'));
+  cell.classList.add('drag-over');
+  dragTargetDate = cell.dataset.date;
+}
+
+function calDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function calDrop(e) {
+  e.preventDefault();
+  document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('drag-over'));
+  if (!draggedShift || !dragTargetDate) return;
+  initiateMove(draggedShift, dragTargetDate);
+  draggedShift = null;
+  dragTargetDate = null;
+}
+
+// ─── Touch drag ───────────────────────────────────────────────────────────────
+let touchShiftKey = null, touchClone = null;
+
+function calTouchStart(e, sk) {
+  touchShiftKey = sk;
+  const chip = e.currentTarget;
+  touchClone = chip.cloneNode(true);
+  touchClone.style.cssText = 'position:fixed;opacity:0.85;pointer-events:none;z-index:999;width:' + chip.offsetWidth + 'px;font-size:8px;';
+  document.body.appendChild(touchClone);
+
+  document.addEventListener('touchmove', calTouchMove, { passive: false });
+  document.addEventListener('touchend', calTouchEnd);
+}
+
+function calTouchMove(e) {
+  e.preventDefault();
+  const t = e.touches[0];
+  if (touchClone) {
+    touchClone.style.left = (t.clientX - 20) + 'px';
+    touchClone.style.top = (t.clientY - 20) + 'px';
+  }
+  document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('drag-over'));
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  const cell = el ? el.closest('.cal-day') : null;
+  if (cell) { cell.classList.add('drag-over'); dragTargetDate = cell.dataset.date; }
+  else dragTargetDate = null;
+}
+
+function calTouchEnd(e) {
+  document.removeEventListener('touchmove', calTouchMove);
+  document.removeEventListener('touchend', calTouchEnd);
+  if (touchClone) { touchClone.remove(); touchClone = null; }
+  document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('drag-over'));
+  if (touchShiftKey && dragTargetDate) {
+    initiateMove(touchShiftKey, dragTargetDate);
+  }
+  touchShiftKey = null;
+  dragTargetDate = null;
+}
+
+// ─── Move confirm ─────────────────────────────────────────────────────────────
+function initiateMove(sk, newDateStr) {
+  const s = allShifts.find(x => shiftKey(x) === sk);
+  if (!s) return;
+  const oldDate = s.start.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  const newDate = new Date(newDateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  if (oldDate === newDate) return; // same day, no move
+  const label = (RATES[s.role] && RATES[s.role].label) ? RATES[s.role].label : s.role;
+  pendingMove = { sk, newDateStr };
+  document.getElementById('moveConfirmText').innerHTML =
+    'Move <strong>' + label + '</strong> shift from <strong>' + oldDate + '</strong> to <strong>' + newDate + '</strong>?';
+  document.body.style.overflow = 'hidden';
+  document.getElementById('moveConfirmModal').classList.add('open');
+}
+
+async function confirmMove() {
+  document.body.style.overflow = '';
+  document.getElementById('moveConfirmModal').classList.remove('open');
+  if (!pendingMove) return;
+
+  const { sk, newDateStr } = pendingMove;
+  pendingMove = null;
+
+  const cached = await loadShiftsFromCache();
+  const updated = cached.map(s => {
+    const k = s.start instanceof Date ? s.start.getTime() + '_' + s.role : s.start + '_' + s.role;
+    const manualSuffix = s.manual ? '_manual' : '';
+    const fullKey = k + manualSuffix;
+    if (fullKey !== sk && k !== sk) return s;
+    const oldStart = s.start instanceof Date ? s.start : new Date(s.start);
+    const newStart = new Date(newDateStr + 'T' +
+      oldStart.toTimeString().slice(0,8));
+    const duration = s.end ? (s.end instanceof Date ? s.end : new Date(s.end)) - oldStart : 0;
+    return {
+      ...s,
+      start: newStart.getTime(),
+      end: duration ? newStart.getTime() + duration : null
+    };
+  });
+
+  await fetch(WORKER_URL + '/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updated)
+  });
+
+  const fresh = await loadShiftsFromCache();
+  allShifts = applyAdjustments(fresh);
+  render();
+}
+
+function cancelMove() {
+  document.body.style.overflow = '';
+  document.getElementById('moveConfirmModal').classList.remove('open');
+  pendingMove = null;
+}
+
+// ─── Shift action modal ───────────────────────────────────────────────────────
+function openShiftAction(sk) {
+  actionShift = allShifts.find(s => shiftKey(s) === sk);
+  if (!actionShift) return;
+  const label = (RATES[actionShift.role] && RATES[actionShift.role].label) ? RATES[actionShift.role].label : actionShift.role;
+  const dateStr = actionShift.start.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  document.getElementById('shiftActionTitle').textContent = label + ' · ' + dateStr;
+  document.getElementById('shiftActionSub').textContent = actionShift.hours.toFixed(2) + ' hrs · $' + actionShift.pay.toFixed(2);
+  document.body.style.overflow = 'hidden';
+  document.getElementById('shiftActionModal').classList.add('open');
+}
+
+function closeShiftActionModal() {
+  document.body.style.overflow = '';
+  document.getElementById('shiftActionModal').classList.remove('open');
+  actionShift = null;
+}
+
+function editShiftFromAction() {
+  closeShiftActionModal();
+  openAdjustModal();
+}
+
+async function deleteShiftFromAction() {
+  if (!actionShift) return;
+  closeShiftActionModal();
+  const sk = shiftKey(actionShift);
+  const cached = await loadShiftsFromCache();
+  const filtered = cached.filter(s => {
+    const k = (s.start instanceof Date ? s.start.getTime() : s.start) + '_' + s.role + (s.manual ? '_manual' : '');
+    const k2 = (s.start instanceof Date ? s.start.getTime() : s.start) + '_' + s.role;
+    return k !== sk && k2 !== sk;
+  });
+  await fetch(WORKER_URL + '/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(filtered)
+  });
+  const fresh = await loadShiftsFromCache();
+  allShifts = applyAdjustments(fresh);
+  render();
 }
 
 // ─── Fetch with timeout ────────────────────────────────────────────────────────
