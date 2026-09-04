@@ -137,6 +137,7 @@
 
   .modal-save-btn { width: 100%; background: #facc15; border: none; color: #000; padding: 16px; border-radius: 12px; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; margin-top: 16px; }
   .modal-save-btn:active { background: #eab308; }
+  .pay-date-pill { background: #111; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: 'DM Mono', monospace; font-size: 12px; color: #fff; margin-bottom: 20px; text-align: center; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
   .cal-day { background: var(--card); border: 1px solid var(--border); border-radius: 8px; min-height: 72px; padding: 6px 4px; position: relative; transition: background 0.15s; }
   .cal-day.today { border-color: #facc15; }
@@ -184,7 +185,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.8.0</div>
+  <div class="version">v2.8.1</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -314,7 +315,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.8.0';
+const VERSION = 'v2.8.1';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -374,11 +375,16 @@ async function loadShiftsFromCache() {
   try {
     const resp = await fetch(WORKER_URL + '/load');
     const parsed = await resp.json();
-    return parsed.map(s => ({
-      ...s,
-      start: new Date(s.start),
-      end: s.end ? new Date(s.end) : null
-    }));
+    return parsed.map(s => {
+      const start = new Date(s.start);
+      const end = s.end ? new Date(s.end) : null;
+      // Recalculate hours if missing or zero but we have start/end
+      let hours = s.hours;
+      if ((!hours || hours === 0) && end) {
+        hours = (end - start) / 3600000;
+      }
+      return { ...s, start, end, hours };
+    });
   } catch(e) { return []; }
 }
 
@@ -401,7 +407,8 @@ function mergeShifts(existing, incoming) {
 let allAdjustments = {}; // key: start.getTime()+'_'+role -> { actualHours, note, savedAt }
 
 function shiftKey(s) {
-  return s.start.getTime() + '_' + s.role;
+  const t = s.start instanceof Date ? s.start.getTime() : s.start;
+  return t + '_' + s.role + (s.manual ? '_manual' : '');
 }
 
 async function saveAdjustments() {
@@ -496,9 +503,9 @@ function formatDate(d) {
 }
 
 function periodEndDisplay(end) {
-  // end is exclusive, so show the day before
-  const display = new Date(end.getTime() - 86400000);
-  return formatDate(display);
+  // end is exclusive start of next period — show the day before using date math
+  const d = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1);
+  return formatDate(d);
 }
 
 function monthKey(d) {
@@ -728,12 +735,8 @@ function render() {
         '<div class="total-value">$' + tips.toFixed(0) + '</div>' +
         '<div class="total-sub">this period</div>' +
       '</div>' +
-      '<div class="total-card">' +
-        '<div class="total-label">Pay Date</div>' +
-        '<div class="total-value" style="font-size:22px;">' + payDateStr + '</div>' +
-        '<div class="total-sub">' + payCountdown + '</div>' +
-      '</div>' +
     '</div>' +
+    '<div class="pay-date-pill">💰 Pay date: <strong>' + payDateStr + '</strong> · <span style="color:var(--muted)">' + payCountdown + '</span></div>' +
 
     '<div class="section-title">Schedule</div>' +
     '<div class="cal-grid" id="calGrid"></div>' +
@@ -756,8 +759,9 @@ function render() {
     '</div>' +
     '<div class="tax-note">* Estimates based on 2026 rates, single filer. Actual withholding may vary.</div>';
 
-  renderCalGrid(shifts, start);
   renderLog();
+  // Use setTimeout to ensure DOM is updated before rendering grid
+  setTimeout(() => renderCalGrid(shifts, start), 0);
 }
 
 // ─── Calendar Grid ────────────────────────────────────────────────────────────
