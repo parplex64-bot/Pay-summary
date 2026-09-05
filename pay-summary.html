@@ -185,7 +185,7 @@
   <div class="logo">Cascade Indoor Sports</div>
   <h1>Pay Summary</h1>
   <div class="subtitle">Auto-synced from When I Work</div>
-  <div class="version">v2.8.1</div>
+  <div class="version">v2.8.2</div>
 </header>
 <div class="period-selector">
   <button class="period-btn" onclick="selectPeriod(-1)">Previous</button>
@@ -315,7 +315,7 @@
 </div>
 
 <script>
-const VERSION = 'v2.8.1';
+const VERSION = 'v2.8.2';
 const ICAL_TOKEN = 'ca5d37783d1d108d2afd3ace9efaaa8324e408bb';
 const ICAL_SOURCE = 'https://app.wheniwork.com/calendar/' + ICAL_TOKEN + '.ics';
 
@@ -467,17 +467,28 @@ function calcTax(gross) {
 
 // ─── Pay period helpers ────────────────────────────────────────────────────────
 function pacificDate(utcDate) {
-  // Returns the Pacific calendar date as a comparable number YYYYMMDD
   const pac = new Date(utcDate.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
   return pac.getFullYear() * 10000 + (pac.getMonth() + 1) * 100 + pac.getDate();
 }
 
+function pacificDateObj(utcDate) {
+  // Returns a Date-like object adjusted to Pacific local time values
+  const str = utcDate.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
+  return new Date(str);
+}
+
+function todayPacific() {
+  const p = pacificDateObj(new Date());
+  return p.getFullYear() * 10000 + (p.getMonth() + 1) * 100 + p.getDate();
+}
+
 function getPayPeriod(offset = 0) {
-  const anchor = new Date(2026, 3, 20, 0, 0, 0); // Apr 20 2026 local midnight
+  const anchor = new Date(2026, 3, 20, 0, 0, 0); // Apr 20 2026
   const msPerPeriod = 14 * 86400000;
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diff = today - anchor;
+  // Use Pacific date for "today" so it works regardless of device timezone
+  const pacToday = pacificDateObj(new Date());
+  const todayMidnight = new Date(pacToday.getFullYear(), pacToday.getMonth(), pacToday.getDate());
+  const diff = todayMidnight - anchor;
   const periodIndex = diff < 0 ? Math.ceil(diff / msPerPeriod) : Math.floor(diff / msPerPeriod);
   const start = new Date(anchor.getTime() + (periodIndex + offset) * msPerPeriod);
   const end = new Date(start.getTime() + 14 * 86400000);
@@ -489,12 +500,8 @@ function getPayPeriod(offset = 0) {
 function getShiftsForPeriod(offset) {
   const { startNum, endNum } = getPayPeriod(offset);
   return allShifts.filter(s => {
-    const checks = [
-      pacificDate(s.start),
-      s.start.getUTCFullYear() * 10000 + (s.start.getUTCMonth() + 1) * 100 + s.start.getUTCDate(),
-      s.start.getFullYear() * 10000 + (s.start.getMonth() + 1) * 100 + s.start.getDate(),
-    ];
-    return checks.some(d => d >= startNum && d < endNum);
+    const d = pacificDate(s.start);
+    return d >= startNum && d < endNum;
   });
 }
 
@@ -704,8 +711,8 @@ function render() {
       '<div>' +
         '<div class="shift-role">' + badge(s.role) + ' ' + s.role.charAt(0).toUpperCase() + s.role.slice(1) + (s.adjusted ? ' <span class="adjusted-tag">✎ ADJUSTED</span>' : '') + (s.manual ? ' <span class="adjusted-tag" style="color:#60a5fa;background:#0a1a2a;border:1px solid #1d4ed8;">MANUAL</span>' : '') + '</div>' +
         '<div class="shift-date">' +
-          s.start.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }) +
-          (s.manual && s.note ? ' · ' + s.note : (!s.manual ? ' · ' + s.start.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) + ' – ' + (s.end ? s.end.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '?') : '')) +
+          pacificDateObj(s.start).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }) +
+          (s.manual && s.note ? ' · ' + s.note : (!s.manual ? ' · ' + pacificDateObj(s.start).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) + ' – ' + (s.end ? pacificDateObj(s.end).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '?') : '')) +
         '</div>' +
       '</div>' +
       '<div class="shift-right">' +
@@ -777,22 +784,23 @@ function calDayKey(date) {
 function renderCalGrid(shifts, periodStart) {
   const grid = document.getElementById('calGrid');
   if (!grid) return;
-  const today = new Date();
-  const todayKey = calDayKey(today);
+  const todayKey = todayPacific();
   const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-  // Build map of dayKey -> shifts
+  // Build map of dayKey -> shifts using Pacific dates
   const dayMap = {};
   shifts.forEach(s => {
     const k = pacificDate(s.start);
     if (!dayMap[k]) dayMap[k] = [];
-    dayMap[k].push(s);
+    if (!dayMap[k].find(x => shiftKey(x) === shiftKey(s))) {
+      dayMap[k].push(s);
+    }
   });
 
   let html = '';
   for (let i = 0; i < 14; i++) {
-    const d = new Date(periodStart.getTime() + i * 86400000);
-    const k = calDayKey(d);
+    const d = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate() + i);
+    const k = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
     const isToday = k === todayKey;
     const dayShifts = dayMap[k] || [];
     html += '<div class="cal-day' + (isToday ? ' today' : '') + '" data-daykey="' + k + '" data-date="' + d.toISOString().slice(0,10) + '" ondragover="calDragOver(event)" ondrop="calDrop(event)" ondragleave="calDragLeave(event)">';
@@ -801,7 +809,7 @@ function renderCalGrid(shifts, periodStart) {
     dayShifts.forEach(s => {
       const chipClass = ['cashier','bouncer','cafe'].includes(s.role) ? s.role : 'other';
       const label = (RATES[s.role] && RATES[s.role].label) ? RATES[s.role].label : s.role;
-      const hrs = s.hours.toFixed(2);
+      const hrs = s.hours ? s.hours.toFixed(2) : '0.00';
       const sk = shiftKey(s);
       html += '<div class="cal-shift-chip ' + chipClass + '" draggable="true" data-shiftkey="' + sk + '" ' +
         'ondragstart="calDragStart(event,\'' + sk + '\')" ' +
